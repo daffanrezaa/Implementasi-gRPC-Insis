@@ -1,0 +1,102 @@
+syntax = "proto3";
+package trading;
+
+enum OrderSide {
+  BUY = 0;
+  SELL = 1;
+}
+
+enum OrderType {
+  LIMIT = 0;
+  MARKET = 1;
+}
+
+enum OrderStatus {
+  PENDING = 0;
+  OPEN = 1;
+  PARTIALLY_FILLED = 2;
+  FILLED = 3;
+  CANCELLED = 4;
+  EXPIRED = 5;
+}
+
+message OrderRequest {
+  string trader_id = 1;
+  string ticker = 2;
+  OrderSide side = 3;
+  int32 quantity = 4;
+  double price = 5;
+  OrderType type = 6;
+}
+
+message OrderResponse {
+  string order_id = 1;
+  OrderStatus status = 2;
+  int32 filled_qty = 3;
+  double avg_fill_price = 4;
+  string message = 5;
+}
+
+message CancelRequest {
+  string trader_id = 1;
+  string order_id = 2;
+}
+
+message CancelResponse {
+  bool success = 1;
+  double refunded_amount = 2;
+  string message = 3;
+}
+
+message PortfolioRequest {
+  string trader_id = 1;
+}
+
+message Holding {
+  string ticker = 1;
+  int32 quantity = 2;
+  double avg_cost = 3;
+  double current_price = 4;
+  double pnl_pct = 5;
+  double pnl_amount = 6;
+}
+
+message PortfolioResponse {
+  repeated Holding holdings = 1;
+  double total_value = 2;
+  double total_pnl = 3;
+}
+
+message OrderBookRequest {
+  string ticker = 1;
+  int32 depth = 2;
+}
+
+message OrderBookLevel {
+  double price = 1;
+  int32 quantity = 2;
+  int32 order_count = 3;
+}
+
+message OrderBookResponse {
+  repeated OrderBookLevel bids = 1;
+  repeated OrderBookLevel asks = 2;
+  double spread = 3;
+  string ticker = 4;
+}
+
+message BatchResponse {
+  int32 total = 1;
+  int32 filled = 2;
+  int32 open = 3;
+  int32 rejected = 4;
+  double total_value_executed = 5;
+}
+
+service TradingService {
+  rpc PlaceOrder (OrderRequest) returns (OrderResponse);
+  rpc CancelOrder (CancelRequest) returns (CancelResponse);
+  rpc GetPortfolio (PortfolioRequest) returns (PortfolioResponse);
+  rpc GetOrderBook (OrderBookRequest) returns (OrderBookResponse);
+  rpc BatchPlaceOrders (stream OrderRequest) returns (BatchResponse);
+}
