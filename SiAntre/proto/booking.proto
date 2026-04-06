@@ -1,0 +1,77 @@
+syntax = "proto3";
+package siantre;
+
+service BookingService {
+  rpc CreateBooking     (CreateBookingRequest)     returns (CreateBookingResponse);
+  rpc CancelBooking     (CancelBookingRequest)     returns (CancelBookingResponse);
+  rpc GetMyBooking      (GetMyBookingRequest)      returns (GetMyBookingResponse);
+  rpc RescheduleBooking (RescheduleBookingRequest) returns (RescheduleBookingResponse);
+}
+
+// ── CreateBooking ───────────────────────────────────────────────
+
+message CreateBookingRequest {
+  string citizen_id   = 1;
+  string citizen_name = 2;
+  string service_id   = 3;
+  string slot_id      = 4;
+}
+
+message CreateBookingResponse {
+  string booking_id   = 1;
+  string booking_code = 2;  // e.g. "PKB-A3F7"
+  string slot_time    = 3;
+  string slot_date    = 4;
+  string status       = 5;  // "BOOKED"
+  string message      = 6;
+}
+
+// ── CancelBooking ───────────────────────────────────────────────
+
+message CancelBookingRequest {
+  string booking_id = 1;
+  string citizen_id = 2;
+  string reason     = 3;
+}
+
+message CancelBookingResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// ── GetMyBooking ────────────────────────────────────────────────
+
+message GetMyBookingRequest {
+  string citizen_id = 1;
+}
+
+message GetMyBookingResponse {
+  repeated BookingDetail bookings = 1;
+}
+
+message BookingDetail {
+  string booking_id   = 1;
+  string booking_code = 2;
+  string service_name = 3;
+  string service_id   = 4;
+  string slot_time    = 5;
+  string slot_date    = 6;
+  string status       = 7;
+  int32  queue_number = 8;
+  string created_at   = 9;
+}
+
+// ── RescheduleBooking ───────────────────────────────────────────
+
+message RescheduleBookingRequest {
+  string booking_id  = 1;
+  string citizen_id  = 2;
+  string new_slot_id = 3;
+}
+
+message RescheduleBookingResponse {
+  bool   success       = 1;
+  string new_slot_time = 2;
+  string new_slot_date = 3;
+  string message       = 4;
+}

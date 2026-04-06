@@ -1,0 +1,206 @@
+syntax = "proto3";
+package siantre;
+
+service AdminService {
+  // System
+  rpc IsSystemInitialized (IsSystemInitializedRequest)  returns (IsSystemInitializedResponse);
+  rpc RegisterOfficer     (RegisterOfficerRequest)      returns (RegisterOfficerResponse);
+  rpc ListOfficers        (ListOfficersRequest)         returns (ListOfficersResponse);
+  rpc UpdateOfficer       (UpdateOfficerRequest)        returns (UpdateOfficerResponse);
+  rpc DeleteOfficer       (DeleteOfficerRequest)        returns (DeleteOfficerResponse);
+
+  // Authentication
+  rpc LoginOfficer   (LoginOfficerRequest)   returns (LoginOfficerResponse);
+
+  // Bi-directional streaming: admin sends commands, server responds with events
+  rpc AdminSession    (stream AdminCommand)   returns (stream AdminEvent);
+  rpc ResetDailyQuota (ResetQuotaRequest)     returns (ResetQuotaResponse);
+  rpc GetSystemStats  (GetSystemStatsRequest) returns (GetSystemStatsResponse);
+
+  // Check-in & Walk-in (officer confirms citizen arrival)
+  rpc CheckInCitizen (CheckInRequest)  returns (CheckInResponse);
+  rpc WalkInCitizen  (WalkInRequest)   returns (WalkInResponse);
+}
+
+// ── IsSystemInitialized ────────────────────────────────────────
+
+message IsSystemInitializedRequest {}
+
+message IsSystemInitializedResponse {
+  bool initialized = 1;  // false = no officers exist yet
+}
+
+// ── RegisterOfficer ─────────────────────────────────────────────
+
+message RegisterOfficerRequest {
+  string requester_id  = 1;  // ID Pegawai of requester (must be ADMIN)
+  string requester_pin = 2;  // PIN of requester (re-auth for security)
+  string id_pegawai    = 3;  // new officer's ID
+  string nama          = 4;
+  string jabatan       = 5;
+  string role          = 6;  // PETUGAS or ADMIN
+  string pin           = 7;  // new officer's PIN
+}
+
+message RegisterOfficerResponse {
+  bool   success    = 1;
+  string id_pegawai = 2;
+  string message    = 3;
+}
+
+// ── ListOfficers ────────────────────────────────────────────────
+
+message ListOfficersRequest {
+  string requester_id  = 1;
+  string requester_pin = 2;
+}
+
+message OfficerInfo {
+  string id_pegawai = 1;
+  string nama       = 2;
+  string jabatan    = 3;
+  string role       = 4;
+}
+
+message ListOfficersResponse {
+  repeated OfficerInfo officers = 1;
+}
+
+// ── UpdateOfficer ───────────────────────────────────────────────
+
+message UpdateOfficerRequest {
+  string requester_id  = 1;
+  string requester_pin = 2;
+  string id_pegawai    = 3;  // Target officer
+  string new_nama      = 4;  // Optional, empty means no change
+  string new_jabatan   = 5;
+  string new_role      = 6;
+  string new_pin       = 7;  // Optional, empty means no change
+}
+
+message UpdateOfficerResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// ── DeleteOfficer ───────────────────────────────────────────────
+
+message DeleteOfficerRequest {
+  string requester_id  = 1;
+  string requester_pin = 2;
+  string id_pegawai    = 3;  // Target to delete
+}
+
+message DeleteOfficerResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// ── LoginOfficer ────────────────────────────────────────────────
+
+message LoginOfficerRequest {
+  string id_pegawai = 1;
+  string pin        = 2;
+}
+
+message LoginOfficerResponse {
+  bool   success    = 1;
+  string id_pegawai = 2;
+  string nama       = 3;
+  string jabatan    = 4;
+  string role       = 5;
+  string message    = 6;
+}
+
+// ── AdminSession (BiDi) ─────────────────────────────────────────
+
+message AdminCommand {
+  string command_type = 1;
+  // CALL_NEXT    — advance queue for a service
+  // ANNOUNCE     — broadcast a message to subscribers
+  // PAUSE        — temporarily close a service
+  // RESUME       — re-open a service
+  // GET_STATS    — request a stats snapshot
+
+  string service_id   = 2;
+  string officer_id   = 3;
+  string payload      = 4;  // JSON string for extra data
+}
+
+message AdminEvent {
+  string event_type = 1;
+  // QUEUE_UPDATE    — result of CALL_NEXT
+  // STATS_SNAPSHOT  — result of GET_STATS
+  // ACK             — general acknowledgement
+  // ERROR           — command processing failed
+
+  string service_id = 2;
+  string payload    = 3;  // JSON string response body
+  string timestamp  = 4;
+}
+
+// ── CheckInCitizen ──────────────────────────────────────────────
+
+message CheckInRequest {
+  string officer_id    = 1;
+  string booking_code  = 2;  // kode booking dari warga (e.g. "PKB-A3F7")
+}
+
+message CheckInResponse {
+  int32  queue_number   = 1;
+  string citizen_name   = 2;
+  string service_name   = 3;
+  int32  people_ahead   = 4;
+  string estimated_wait = 5;
+  string message        = 6;
+}
+
+// ── WalkInCitizen ───────────────────────────────────────────────
+
+message WalkInRequest {
+  string officer_id    = 1;
+  string citizen_name  = 2;   // nama warga walk-in
+  string service_id    = 3;   // layanan yang dipilih
+}
+
+message WalkInResponse {
+  int32  queue_number  = 1;
+  string booking_code  = 2;
+  int32  people_ahead  = 3;
+  string message       = 4;
+}
+
+// ── ResetDailyQuota ─────────────────────────────────────────────
+
+message ResetQuotaRequest {
+  string service_id = 1;  // empty = reset ALL services
+}
+
+message ResetQuotaResponse {
+  bool   success        = 1;
+  int32  services_reset = 2;
+  string message        = 3;
+}
+
+// ── GetSystemStats ──────────────────────────────────────────────
+
+message GetSystemStatsRequest {}
+
+message GetSystemStatsResponse {
+  int32                total_bookings_today  = 1;
+  int32                total_served_today    = 2;
+  int32                total_cancelled_today = 3;
+  int32                active_subscribers    = 4;
+  repeated ServiceStats per_service          = 5;
+}
+
+message ServiceStats {
+  string service_id      = 1;
+  string service_name    = 2;
+  int32  quota_total     = 3;
+  int32  quota_used      = 4;
+  int32  quota_remaining = 5;
+  int32  waiting_count   = 6;
+  int32  current_number  = 7;
+  bool   is_open         = 8;
+}

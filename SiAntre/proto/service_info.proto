@@ -1,0 +1,120 @@
+syntax = "proto3";
+package siantre;
+
+service ServiceInfoService {
+  // ── Auth ──
+  rpc RegisterCitizen (RegisterCitizenRequest) returns (RegisterCitizenResponse);
+  rpc LoginCitizen    (LoginCitizenRequest)    returns (LoginCitizenResponse);
+
+  // ── Layanan info ──
+  rpc ListServices      (ListServicesRequest)      returns (ListServicesResponse);
+  rpc GetServiceDetail  (GetServiceDetailRequest)  returns (GetServiceDetailResponse);
+  rpc GetAvailableSlots (GetAvailableSlotsRequest) returns (GetAvailableSlotsResponse);
+
+  // ── Pengumuman ──
+  rpc GetAnnouncements  (GetAnnouncementsRequest)  returns (GetAnnouncementsResponse);
+}
+
+// ── Auth messages ───────────────────────────────────────────────
+
+message RegisterCitizenRequest {
+  string nik          = 1;  // NIK 16 digit
+  string nama_lengkap = 2;
+  string no_hp        = 3;
+  string alamat       = 4;
+}
+
+message RegisterCitizenResponse {
+  bool   success = 1;
+  string nik     = 2;
+  string message = 3;
+}
+
+message LoginCitizenRequest {
+  string nik = 1;  // NIK 16 digit as login
+}
+
+message LoginCitizenResponse {
+  bool   success      = 1;
+  string nik          = 2;
+  string nama_lengkap = 3;
+  string no_hp        = 4;
+  string alamat       = 5;
+  string message      = 6;
+}
+
+// ── Service info messages ───────────────────────────────────────
+
+message ListServicesRequest {}
+
+message ListServicesResponse {
+  repeated ServiceSummary services = 1;
+  string server_time               = 2;
+}
+
+message GetServiceDetailRequest {
+  string service_id = 1;
+}
+
+message GetServiceDetailResponse {
+  string          service_id       = 1;
+  string          name             = 2;
+  string          short_code       = 3;
+  int32           daily_quota      = 4;
+  string          open_hour        = 5;
+  string          close_hour       = 6;
+  string          location         = 7;
+  repeated string requirements     = 8;
+  bool            is_open          = 9;
+  int32           quota_remaining  = 10;
+}
+
+message GetAvailableSlotsRequest {
+  string service_id = 1;
+  string date       = 2;
+}
+
+message GetAvailableSlotsResponse {
+  string          service_id      = 1;
+  string          date            = 2;
+  repeated SlotInfo slots         = 3;
+  int32           total_available = 4;
+}
+
+// ── Pengumuman messages ─────────────────────────────────────────
+
+message GetAnnouncementsRequest {}
+
+message Announcement {
+  string message   = 1;
+  string timestamp = 2;
+}
+
+message GetAnnouncementsResponse {
+  repeated Announcement announcements = 1;
+}
+
+// ── Shared sub-messages ─────────────────────────────────────────
+
+message ServiceSummary {
+  string service_id      = 1;
+  string name            = 2;
+  string short_code      = 3;
+  int32  daily_quota     = 4;
+  int32  quota_remaining = 5;
+  bool   is_open         = 6;
+  string open_hour       = 7;
+  string close_hour      = 8;
+  string location        = 9;
+}
+
+message SlotInfo {
+  string slot_id       = 1;
+  string service_id    = 2;
+  string date          = 3;
+  string time          = 4;
+  string status        = 5;   // AVAILABLE | FULL
+  int32  capacity      = 6;   // max capacity (4 loket)
+  int32  booked_count  = 7;   // how many bookings in this slot
+  int32  available     = 8;   // capacity - booked_count
+}

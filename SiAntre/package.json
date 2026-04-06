@@ -1,0 +1,23 @@
+{
+  "name": "siantre",
+  "version": "1.0.0",
+  "description": "Sistem Antrian Layanan Publik Digital via gRPC",
+  "main": "server/index.js",
+  "scripts": {
+    "server": "nodemon server/index.js",
+    "server:start": "node server/index.js",
+    "warga": "node client/warga.js",
+    "citizen": "node client/warga.js",
+    "admin": "node client/admin.js"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.10.0",
+    "@grpc/proto-loader": "^0.7.0",
+    "chalk": "^5.3.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "type": "commonjs"
+}

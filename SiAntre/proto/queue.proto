@@ -1,0 +1,70 @@
+syntax = "proto3";
+package siantre;
+
+service QueueService {
+  // Server-side streaming: client subscribes, server pushes on every queue change
+  rpc WatchQueue     (WatchQueueRequest)     returns (stream QueueUpdate);
+  rpc GetQueueStatus (GetQueueStatusRequest) returns (GetQueueStatusResponse);
+  rpc CallNext       (CallNextRequest)       returns (CallNextResponse);
+}
+
+// ── WatchQueue ──────────────────────────────────────────────────
+
+message WatchQueueRequest {
+  string service_id      = 1;
+  string citizen_id      = 2;
+  int32  my_queue_number = 3;  // 0 if not yet confirmed arrival
+}
+
+// Streamed message — server pushes this on every state change
+message QueueUpdate {
+  string event_type      = 1;
+  // QUEUE_MOVED       — a number was called, queue advanced
+  // YOUR_TURN         — this specific subscriber's number was called
+  // QUOTA_EXHAUSTED   — daily quota is now 0
+  // QUOTA_OPENED      — quota was reset, new day begins
+  // SERVICE_CLOSED    — service paused by admin
+  // SERVICE_RESUMED   — service resumed by admin
+  // ANNOUNCEMENT      — admin broadcast message
+
+  string service_id      = 2;
+  int32  current_number  = 3;   // number currently being served
+  int32  your_number     = 4;   // this subscriber's queue number
+  int32  people_ahead    = 5;   // how many people ahead in queue
+  int32  total_waiting   = 6;
+  string estimated_wait  = 7;   // "± 20 menit"
+  int32  quota_remaining = 8;
+  string message         = 9;
+  string timestamp       = 10;
+}
+
+// ── GetQueueStatus ──────────────────────────────────────────────
+
+message GetQueueStatusRequest {
+  string service_id = 1;
+}
+
+message GetQueueStatusResponse {
+  string        service_id      = 1;
+  string        service_name    = 2;
+  int32         current_number  = 3;
+  int32         total_waiting   = 4;
+  int32         quota_remaining = 5;
+  bool          is_open         = 6;
+  repeated int32 waiting_numbers = 7;
+  string        timestamp       = 8;
+}
+
+// ── CallNext ────────────────────────────────────────────────────
+
+message CallNextRequest {
+  string service_id = 1;
+  string officer_id = 2;
+}
+
+message CallNextResponse {
+  int32  called_number = 1;
+  int32  total_waiting = 2;
+  int32  broadcast_count = 3;  // how many subscribers were notified
+  string message       = 4;
+}
