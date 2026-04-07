@@ -1,7 +1,0 @@
-{
-  "BBCA": { "name": "Bank Central Asia",    "current": 9250, "open": 9200, "high": 9300, "low": 9150, "volume": 0 },
-  "TLKM": { "name": "Telkom Indonesia",     "current": 3940, "open": 3900, "high": 3970, "low": 3880, "volume": 0 },
-  "GOTO": { "name": "GoTo Gojek Tokopedia", "current": 68,   "open": 66,   "high": 70,   "low": 64,   "volume": 0 },
-  "ASII": { "name": "Astra International",  "current": 4550, "open": 4500, "high": 4600, "low": 4480, "volume": 0 },
-  "BMRI": { "name": "Bank Mandiri",         "current": 5200, "open": 5150, "high": 5250, "low": 5100, "volume": 0 }
-}
