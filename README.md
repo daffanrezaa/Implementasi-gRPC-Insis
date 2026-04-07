@@ -8,8 +8,8 @@
 
 | Nama | NRP |
 |------|-----|
-| Nama Anggota 1 | 50XXXXXXXX |
-| Nama Anggota 2 | 50XXXXXXXX |
+| Ahmad Rafi Fadhillah Dwiputra | 5027241068 |
+| Aditya Reza Daffansyah | 5027241034 |
 
 ---
 
