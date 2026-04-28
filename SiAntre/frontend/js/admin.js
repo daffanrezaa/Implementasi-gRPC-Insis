@@ -124,6 +124,19 @@
     document.getElementById('admin-dashboard').classList.remove('hidden');
   });
 
+  // Re-authenticating session after reconnect
+  EventBus.on('wsConnected', () => {
+    if (AppState.currentAdmin && AppState._reqPin) {
+      console.log('[Admin] Connection reset, re-authenticating officer...');
+      sendCommand('ADMIN_LOGIN', { 
+        id_pegawai: AppState.currentAdmin.id_pegawai, 
+        pin: AppState._reqPin 
+      });
+    }
+    // KRIT-3 FIX: Always load services for both roles
+    sendCommand('LIST_SERVICES');
+  });
+
   document.getElementById('btn-admin-logout')?.addEventListener('click', () => {
     AppState.currentAdmin = null;
     window.location.reload();
@@ -140,7 +153,7 @@
             <p class="font-black text-primary text-lg">${window.esc(s.short_code)}</p>
             <p class="text-xs font-bold">${window.esc(s.name)}</p>
           </div>
-          <span class="badge badge-xs">${s.is_open ? 'BUKA' : 'TUTUP'}</span>
+          <span class="badge badge-xs ${s.is_open ? '' : 'badge-ghost'}">${s.is_open ? 'BUKA' : 'TUTUP'}</span>
         </div>
         <div class="text-center py-4">
           <p class="text-[10px] opacity-40 uppercase font-bold">Dilayani</p>
@@ -173,6 +186,39 @@
     });
   }
 
+  function patchAdminQueueCards(services) {
+    services.forEach(s => {
+      const qquota = document.getElementById(`qquota-${s.service_id}`);
+      if (qquota) qquota.textContent = s.quota_remaining;
+      
+      const qwait = document.getElementById(`qwait-${s.service_id}`);
+      if (qwait && s.waiting_count !== null && s.waiting_count !== undefined) {
+        qwait.textContent = s.waiting_count;
+      }
+
+      const qnum = document.getElementById(`qnum-${s.service_id}`);
+      if (qnum && s.current_number !== null && s.current_number !== undefined && s.current_number > 0) {
+        qnum.textContent = s.current_number;
+      }
+
+      const card = document.getElementById(`qcard-${s.service_id}`);
+      if (!card) return;
+      
+      const badge = card.querySelector('.badge');
+      if (badge) {
+        badge.textContent = s.is_open ? 'BUKA' : 'TUTUP';
+        badge.className = `badge badge-xs ${s.is_open ? '' : 'badge-ghost'}`;
+      }
+      
+      const btn = card.querySelector('.btn-toggle-svc');
+      if (btn) {
+        btn.textContent = s.is_open ? 'Jeda' : 'Buka';
+        btn.className = `btn btn-xs flex-1 ${s.is_open ? 'btn-warning' : 'btn-success'} btn-toggle-svc`;
+        btn.dataset.open = s.is_open;
+      }
+    });
+  }
+
   EventBus.on('servicesLoaded', s => {
     renderAdminQueueCards(s);
     populateDropdowns(s);
@@ -180,16 +226,27 @@
 
   // BUG-C3 FIX: Removed sendCommand('GET_SYSTEM_STATS') — pushScheduler already pushes every 5s
   EventBus.on('servicesUpdate', s => {
-    renderAdminQueueCards(s);
+    patchAdminQueueCards(s);
+  });
+
+  EventBus.on('statsUpdate', msg => {
+    const stats = msg.payload || msg;
+    if (stats.per_service) patchAdminQueueCards(stats.per_service);
   });
 
   EventBus.on('queueUpdate', (msg) => {
     const p = msg.payload;
-    const qnum  = document.getElementById(`qnum-${msg.service_id}`);
-    const qwait = document.getElementById(`qwait-${msg.service_id}`);
-    if (qnum  && p.called_number)      animateNumberFlip(qnum, p.called_number);
+    const qnum   = document.getElementById(`qnum-${msg.service_id}`);
+    const qwait  = document.getElementById(`qwait-${msg.service_id}`);
+    const qquota = document.getElementById(`qquota-${msg.service_id}`);
+    
+    // FIX: field name is current_number, not called_number
+    if (qnum  && p.current_number !== undefined) animateNumberFlip(qnum, p.current_number);
     if (qwait && p.total_waiting !== undefined) qwait.textContent = p.total_waiting;
-    // BUG-C3 FIX: Do NOT call GET_SYSTEM_STATS here — pushScheduler handles it
+    if (qquota && p.quota_remaining !== undefined) qquota.textContent = p.quota_remaining;
+    
+    // Refresh global stats after movement
+    sendCommand('GET_SYSTEM_STATS');
   });
 
   function populateDropdowns(services) {
@@ -213,7 +270,10 @@
   });
 
   document.getElementById('btn-checkin')?.addEventListener('click', () => {
-    const code = document.getElementById('adm-booking-code').value;
+    const codeInput = document.getElementById('adm-booking-code');
+    const code = (codeInput.value || '').trim().toUpperCase();
+    if (!code) return showNotification('Peringatan', 'Masukkan kode booking.', 'warning');
+
     setLoading('btn-checkin', true);
     sendCommand('CHECKIN_CITIZEN', { booking_code: code });
   });
@@ -227,6 +287,10 @@
     document.getElementById('checkin-result-number').textContent = p.queue_number;
     document.getElementById('checkin-result-detail').textContent = p.service_name;
     showNotification('Check-In Berhasil', `Nomor: ${p.queue_number}`, 'success');
+    
+    // Immediate refresh stats
+    sendCommand('GET_SYSTEM_STATS');
+    sendCommand('LIST_SERVICES');
   });
 
   document.getElementById('btn-walkin')?.addEventListener('click', () => {
@@ -245,6 +309,10 @@
     document.getElementById('walkin-result-code').textContent = msg.payload.booking_code;
     document.getElementById('walkin-result-number').textContent = msg.payload.queue_number;
     showNotification('Walk-In Berhasil', `Nomor: ${msg.payload.queue_number}`, 'success');
+    
+    // Immediate refresh stats
+    sendCommand('GET_SYSTEM_STATS');
+    sendCommand('LIST_SERVICES');
   });
 
   // ── ANNOUNCE & RESET ────────────────────────────────────────────────
@@ -262,11 +330,20 @@
   });
 
   EventBus.on('adminEvent', (ev) => {
-    if (ev.event_type === 'ACK' && _pendingAnnounce) {
+    // RESET LOADING for ANNOUNCE
+    if (_pendingAnnounce && (ev.event_type === 'ACK' || ev.event_type === 'ERROR')) {
       _pendingAnnounce = false;
       setLoading('btn-announce', false);
-      showNotification('Terkirim', 'Pengumuman telah disebarkan.', 'success');
-      document.getElementById('adm-announce-msg').value = '';
+      
+      if (ev.event_type === 'ACK') {
+        showNotification('Terkirim', 'Pengumuman telah disebarkan.', 'success');
+        document.getElementById('adm-announce-msg').value = '';
+      } else {
+        // Parse error message from payload JSON if exists
+        let msg = 'Gagal mengirim pengumuman.';
+        try { msg = JSON.parse(ev.payload).message || msg; } catch(e){}
+        showNotification('Gagal', msg, 'error');
+      }
     }
   });
 
@@ -437,15 +514,20 @@
     const esc = (s) => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
     if (!anns.length) return list.innerHTML = '<p class="text-base-content/40 text-sm italic text-center py-4">Belum ada pengumuman.</p>';
     
-    list.innerHTML = [...anns].reverse().map(a => `
-      <div class="bg-base-200/50 p-2 rounded text-xs border-l-2 border-primary">
-        <div class="flex justify-between opacity-40 font-bold mb-1">
-          <span>${esc(a.service_id || 'SEMUA')}</span>
-          <span>${new Date(a.timestamp).toLocaleTimeString()}</span>
+    list.innerHTML = [...anns].reverse().map(a => {
+      const svc = AppState.services.find(s => s.service_id === a.service_id);
+      const labelText = svc ? svc.short_code : 'SEMUA';
+      
+      return `
+        <div class="bg-base-200/50 p-2 rounded text-xs border-l-2 border-primary">
+          <div class="flex justify-between opacity-40 font-bold mb-1">
+            <span>${esc(labelText)}</span>
+            <span>${new Date(a.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+          <p>${esc(a.message)}</p>
         </div>
-        <p>${esc(a.message)}</p>
-      </div>
-    `).slice(0, 5).join('');
+      `;
+    }).slice(0, 5).join('');
   });
 
   // Sidebar Toggle (Mobile) — BUG-H5 FIX: properly clean up classes on close

@@ -617,7 +617,9 @@
     const banner = document.getElementById('ann-banner');
     const bText  = document.getElementById('ann-banner-text');
     if (banner && bText) {
-      bText.textContent = msg.message;
+      const svc = AppState.services.find(s => s.service_id === msg.service_id);
+      const label = svc ? `[${svc.short_code}] ` : '[UMUM] ';
+      bText.textContent = label + msg.message;
       banner.classList.remove('hidden');
       anime({ targets: banner, opacity: [0, 1], translateY: [-10, 0], duration: 500 });
     }
@@ -625,6 +627,9 @@
     if (document.querySelector('.warga-view#view-pengumuman')?.classList.contains('hidden')) {
       AppState.unreadAnnouncements++;
       updateAnnBadge();
+    } else {
+      // If the view is active, refresh the list from server to ensure sync
+      sendCommand('GET_ANNOUNCEMENTS');
     }
   });
 
@@ -640,12 +645,21 @@
         </div>`;
       return;
     }
-    list.innerHTML = [...anns].reverse().map(a => `
-      <div class="ann-entry">
-        <p class="text-[10px] opacity-40 font-bold mb-1">${new Date(a.timestamp).toLocaleString()}</p>
-        <p class="text-sm font-medium">${window.esc(a.message)}</p>
-      </div>
-    `).join('');
+    list.innerHTML = [...anns].reverse().map(a => {
+      const svc = AppState.services.find(s => s.service_id === a.service_id);
+      const labelClass = svc ? 'badge-primary' : 'badge-secondary';
+      const labelText  = svc ? svc.short_code : 'UMUM';
+      
+      return `
+        <div class="ann-entry">
+          <div class="flex items-center justify-between mb-1">
+            <span class="badge ${labelClass} badge-xs font-bold">${labelText}</span>
+            <p class="text-[9px] opacity-40 font-bold">${new Date(a.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</p>
+          </div>
+          <p class="text-sm font-medium">${window.esc(a.message)}</p>
+        </div>
+      `;
+    }).join('');
   });
 
   // Mobile sidebar toggle

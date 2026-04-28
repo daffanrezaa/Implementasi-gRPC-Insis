@@ -98,9 +98,14 @@ function routeMessage(msg) {
       EventBus.emit('queueUpdate', msg);
       EventBus.emit('activityLog', {
         type:      'queue',
-        message:   formatQueueEvent(msg.payload),
+        message:   formatQueueEvent(msg.payload, msg.service_id),
         timestamp: msg.payload.timestamp,
       });
+      
+      // REAL-TIME ANNOUNCEMENT DETECTION
+      if (msg.payload.event_type === 'ANNOUNCEMENT') {
+        EventBus.emit('newAnnouncement', msg.payload);
+      }
       
       // CLIENT-SIDE YOUR_TURN DETECTION
       if (AppState.myBooking
@@ -130,11 +135,8 @@ function routeMessage(msg) {
 
     case 'NEW_ANNOUNCEMENT':
       EventBus.emit('newAnnouncement', msg.payload);
-      EventBus.emit('activityLog', {
-        type:      'announce',
-        message:   `📢 ${msg.payload.title}: ${msg.payload.message}`,
-        timestamp: msg.payload.timestamp,
-      });
+      // BUG-L4 FIX: Skip logging NEW_ANNOUNCEMENT to activity log as it's already handled by QUEUE_UPDATE (ANNOUNCEMENT)
+      // to avoid double entries in the admin log.
       if(typeof showNotification === 'function') showNotification('Pengumuman', msg.payload.message, 'info');
       break;
 
@@ -213,13 +215,16 @@ function routeMessage(msg) {
   }
 }
 
-function formatQueueEvent(payload) {
+function formatQueueEvent(payload, service_id = null) {
+  const svc = AppState.services.find(s => s.service_id === (service_id || payload.service_id));
+  const sLabel = svc ? `[${svc.short_code}]` : '[UMUM]';
+
   const labels = {
     QUEUE_MOVED:     `Antrian bergerak — nomor ${payload.current_number} | menunggu: ${payload.total_waiting}`,
     YOUR_TURN:       `🎉 GILIRAN ANDA! Segera menuju loket.`,
     SERVICE_CLOSED:  `⚠️ Layanan ditutup sementara.`,
     SERVICE_RESUMED: `✅ Layanan dibuka kembali.`,
-    ANNOUNCEMENT:    `📢 ${payload.message}`,
+    ANNOUNCEMENT:    `📢 ${sLabel} ${payload.message}`,
     QUOTA_OPENED:    `Slot baru tersedia.`,
   };
   return labels[payload.event_type] || `Event: ${payload.event_type}`;

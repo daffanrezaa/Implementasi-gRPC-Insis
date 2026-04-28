@@ -282,7 +282,7 @@ function buildStatsPayload() {
                          + bookingStore.countByStatus('ARRIVED')
                          + bookingStore.countByStatus('CALLED')
                          + bookingStore.countByStatus('DONE'),
-    total_served_today:    bookingStore.countByStatus('DONE'),
+    total_served_today:    bookingStore.countByStatus('CALLED') + bookingStore.countByStatus('DONE'),
     total_cancelled_today: bookingStore.countByStatus('CANCELLED'),
     active_subscribers:    queueStore.totalSubscribers(),
     per_service:           perService,
@@ -559,6 +559,17 @@ function CheckInCitizen(call, callback) {
     const peopleAhead = queue.waiting_list.indexOf(queueNumber);
 
     console.log(`[RPC] CheckInCitizen — ${officer_id} check-in ${booking_code} (${booking.citizen_name}) → Nomor ${queueNumber}`);
+    
+    // Broadcast update to all subscribers so UI (Admin & Warga) updates Waiting list
+    broadcast(booking.service_id, {
+      event_type: 'QUEUE_UPDATE',
+      service_id: booking.service_id,
+      current_number: queue.current_number, // Tetap (tidak berubah saat checkin)
+      total_waiting: queue.waiting_list.length,
+      quota_remaining: queue.quota_remaining,
+      message: `${booking.citizen_name} (No. ${queueNumber}) telah melakukan check-in.`
+    });
+
     callback(null, {
       queue_number:   queueNumber,
       citizen_name:   booking.citizen_name,
@@ -643,6 +654,17 @@ function WalkInCitizen(call, callback) {
     const peopleAhead = queue.waiting_list.indexOf(queueNumber);
 
     console.log(`[RPC] WalkInCitizen — ${officer_id} daftarkan ${citizen_name.trim()} walk-in → Nomor ${queueNumber}`);
+    
+    // Broadcast update
+    broadcast(service_id, {
+      event_type: 'QUEUE_UPDATE',
+      service_id: service_id,
+      current_number: queue.current_number,
+      total_waiting: queue.waiting_list.length,
+      quota_remaining: queue.quota_remaining,
+      message: `${citizen_name.trim()} (No. ${queueNumber}) terdaftar via Walk-in.`
+    });
+
     callback(null, {
       queue_number: queueNumber,
       booking_code: booking.booking_code,

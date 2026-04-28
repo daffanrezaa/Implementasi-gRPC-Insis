@@ -232,21 +232,21 @@ function handleCommand(message, ws, clients) {
       break;
 
     case 'WALK_IN_CITIZEN':
-      payload.officer_id = getClientState(ws)?.officerId || '';
+      payload.officer_id = getClientState(ws)?.idPegawai || '';
       clients.admin.WalkInCitizen(payload, (err, res) => {
         sendToClient(ws, { type: 'WALK_IN_RESULT', error: err?.message, payload: res });
       });
       break;
 
     case 'CHECKIN_CITIZEN':
-      payload.officer_id = getClientState(ws)?.officerId || '';
+      payload.officer_id = getClientState(ws)?.idPegawai || '';
       clients.admin.CheckInCitizen(payload, (err, res) => {
         sendToClient(ws, { type: 'CHECKIN_RESULT', error: err?.message, payload: res });
       });
       break;
 
     case 'RESET_DAILY_QUOTA':
-      payload.officer_id = getClientState(ws)?.officerId || '';
+      payload.officer_id = getClientState(ws)?.idPegawai || '';
       clients.admin.ResetDailyQuota(payload, (err, res) => {
         sendToClient(ws, { type: 'RESET_QUOTA_RESULT', error: err?.message, payload: res });
       });
@@ -285,7 +285,7 @@ function handleCommand(message, ws, clients) {
       sendAdminCommand(ws, {
         command_type: 'CALL_NEXT',
         service_id:   payload.service_id,
-        officer_id:   getClientState(ws)?.officerId || '',  // FIX: inject from state
+        officer_id:   getClientState(ws)?.idPegawai || '',  // Use NIP for isOfficer check
       });
       break;
 
@@ -295,8 +295,8 @@ function handleCommand(message, ws, clients) {
       sendAdminCommand(ws, {
         command_type: 'ANNOUNCE',
         service_id:   payload.service_id || '',
-        officer_id:   getClientState(ws)?.officerId || '',
-        payload:      JSON.stringify({ message: payload.message }),  // FIX: wrap in JSON
+        officer_id:   getClientState(ws)?.idPegawai || '',
+        payload:      JSON.stringify({ message: payload.message }),
       });
       break;
 
@@ -305,7 +305,7 @@ function handleCommand(message, ws, clients) {
       sendAdminCommand(ws, {
         command_type: cmd,
         service_id:   payload.service_id,
-        officer_id:   getClientState(ws)?.officerId || '',
+        officer_id:   getClientState(ws)?.idPegawai || '',
       });
       break;
 

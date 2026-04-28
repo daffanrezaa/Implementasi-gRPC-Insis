@@ -124,6 +124,15 @@
         </aside>
       </div>
 
+      <!-- Announcement Banner (Dynamic) -->
+      <div id="ann-banner" class="hidden bg-primary text-primary-content px-4 py-2 flex items-center justify-between text-sm animate-pulse">
+        <div class="flex items-center gap-2">
+          <span>📢</span>
+          <span id="ann-banner-text" class="font-medium"></span>
+        </div>
+        <button class="btn btn-ghost btn-xs" onclick="document.getElementById('ann-banner').classList.add('hidden')">✕</button>
+      </div>
+
       <!-- Scrollable content area — OPT-5 FIX: pb-20 so bottom nav doesn't overlap last card -->
       <main class="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">
 
