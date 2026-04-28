@@ -103,10 +103,17 @@ function startAutoCancelTimer() {
 }
 
 function seed() {
-  const today    = todayStr();
-  const d        = new Date(today);
-  d.setDate(d.getDate() + 1);
-  const tomorrow = d.toISOString().slice(0, 10);
+  const daysToSeed = 7;
+  const seededDates = [];
+  
+  for (let i = 0; i < daysToSeed; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    const dateStr = d.toISOString().slice(0, 10);
+    seedSharedSlotsForDate(dateStr);
+    seededDates.push(dateStr);
+  }
 
   // Seed SAMSAT services + their individual queues
   for (const svc of SERVICES_DATA) {
@@ -122,10 +129,6 @@ function seed() {
     });
   }
 
-  // Seed SHARED slots (date-only, no service_id) for today and tomorrow
-  seedSharedSlotsForDate(today);
-  seedSharedSlotsForDate(tomorrow);
-
   // Seed demo citizens
   const CITIZENS = [
     { nik: '3201234567890001', nama_lengkap: 'Budi Santoso',   no_hp: '081234567890', alamat: 'Jl. Merdeka No. 10, Jakarta' },
@@ -137,9 +140,9 @@ function seed() {
     citizenStore.set(c.nik, { ...c, citizen_id, registered_at: new Date().toISOString() });
   }
 
-  const slotCount = generateTimeSlots('08:00', '14:00').length * 2; // today + tomorrow
+  const slotCountPerDay = generateTimeSlots('08:00', '14:00').length;
   console.log(`[Seed] ✓ ${SERVICES_DATA.length} layanan SAMSAT dimuat`);
-  console.log(`[Seed] ✓ ${slotCount} shared slot dibuat (${today}, ${tomorrow})`);
+  console.log(`[Seed] ✓ ${slotCountPerDay * daysToSeed} shared slot dibuat (${daysToSeed} hari: ${seededDates[0]} s/d ${seededDates[daysToSeed-1]})`);
   console.log(`[Seed] ✓ ${CITIZENS.length} warga demo terdaftar`);
   console.log(`[Seed] ✓ Auto-cancel timer aktif (cek tiap 60 detik)`);
   // Officers are intentionally NOT seeded to demonstrate the Setup Awal flow

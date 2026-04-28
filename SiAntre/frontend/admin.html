@@ -1,174 +1,284 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="dark">
+<html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="SiAntre — Panel Admin SAMSAT" />
-  <title>SiAntre — Admin Panel</title>
-
-  <!-- DaisyUI + Tailwind CDN -->
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" />
+  <meta name="description" content="SiAntre — Panel Admin dan Petugas untuk manajemen antrian SAMSAT." />
+  <title>SiAntre — Panel Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- ApexCharts -->
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-
-  <!-- anime.js -->
-  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
-
-  <!-- Custom styles -->
-  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"
+          integrity="sha512-aNMyYYxdIxIaot0Y1/PLuEu3eipGCmsEUBrUq+7aVyPGMFH8z0eTP0tkqAvv34fzN6z+201d3T8HPb1svWSKHQ=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
 </head>
-<body class="min-h-screen bg-base-200">
+<body class="bg-base-200 min-h-screen font-[Plus_Jakarta_Sans]">
+  <!-- BUG-M5 FIX: z-[1100] to render above modals -->
+  <div id="toast-container" class="toast toast-top toast-end z-[1100]"></div>
 
-  <!-- ── Navbar ─────────────────────────────────────────────── -->
-  <nav class="navbar bg-base-100 shadow-lg sticky top-0 z-50">
-    <div class="flex-1">
-      <a class="btn btn-ghost text-xl font-bold" href="admin.html">
-        <span class="text-secondary">Si</span>Antre
-        <span class="badge badge-secondary badge-sm">ADMIN</span>
-      </a>
-    </div>
-    <div class="flex-none gap-2">
-      <span id="admin-name" class="text-sm opacity-70"></span>
-      <div id="ws-status-badge" class="badge badge-warning gap-1">
-        <span class="loading loading-ring loading-xs"></span> Menghubungkan...
-      </div>
-    </div>
-  </nav>
-
-  <!-- ── Main Content ───────────────────────────────────────── -->
-  <main class="container mx-auto p-4 max-w-7xl">
-
-    <!-- Login Section (ditampilkan kalau belum login) -->
-    <div id="admin-login-section" class="flex justify-center items-center min-h-[60vh]">
-      <div class="card bg-base-100 shadow-xl w-full max-w-md">
+  <!-- PANEL LOGIN (default visible) -->
+  <div id="admin-login-wrapper" class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+      <!-- Setup Admin Pertama (hidden) -->
+      <div id="admin-setup-panel" class="hidden card bg-base-100 shadow-xl mb-4">
         <div class="card-body">
-          <h2 class="card-title justify-center text-2xl mb-4">🔐 Login Petugas</h2>
-          <div class="form-control">
-            <label class="label"><span class="label-text">ID Pegawai (NIP)</span></label>
-            <input id="input-id-pegawai" type="text" placeholder="Contoh: P001"
-                   class="input input-bordered" />
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-2xl">⚙️</span>
+            <h2 class="font-bold text-lg">Setup Admin Pertama</h2>
           </div>
-          <div class="form-control mt-2">
-            <label class="label"><span class="label-text">PIN</span></label>
-            <input id="input-pin" type="password" placeholder="••••••"
-                   class="input input-bordered" />
+          <p class="text-sm text-base-content/60 mb-4">Belum ada akun terdaftar. Buat akun Administrator pertama untuk memulai.</p>
+          <div class="flex flex-col gap-3">
+            <label class="form-control"><div class="label"><span class="label-text text-xs font-semibold uppercase">ID Pegawai</span></div><input type="text" id="setup-id" placeholder="Contoh: P001" class="input input-bordered input-sm" /></label>
+            <label class="form-control"><div class="label"><span class="label-text text-xs font-semibold uppercase">Nama Lengkap</span></div><input type="text" id="setup-nama" class="input input-bordered input-sm" /></label>
+            <label class="form-control"><div class="label"><span class="label-text text-xs font-semibold uppercase">PIN (min 6 digit)</span></div><input type="password" id="setup-pin" class="input input-bordered input-sm" /></label>
+            <button class="btn btn-warning w-full" id="btn-setup-admin">Daftarkan Admin Pertama</button>
           </div>
-          <div class="card-actions mt-4">
-            <button id="btn-admin-login" class="btn btn-secondary w-full">Masuk</button>
-          </div>
-          <p id="login-error" class="text-error text-sm text-center mt-2 hidden"></p>
         </div>
+      </div>
+      <!-- Form Login -->
+      <div id="admin-login-panel" class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="avatar placeholder"><div class="bg-neutral text-neutral-content rounded-xl w-10"><span class="text-lg font-black">S</span></div></div>
+            <div><h1 class="font-bold text-lg leading-tight">SiAntre</h1><p class="text-xs text-base-content/50">Panel Petugas & Administrator</p></div>
+          </div>
+          <label class="form-control w-full mb-3"><div class="label"><span class="label-text text-xs font-semibold uppercase">ID Pegawai</span></div><input type="text" id="admin-id" placeholder="P001" class="input input-bordered w-full font-mono" autocomplete="off" /></label>
+          <label class="form-control w-full mb-4"><div class="label"><span class="label-text text-xs font-semibold uppercase">PIN</span></div><input type="password" id="admin-pin" placeholder="••••••" class="input input-bordered w-full" /></label>
+          <button class="btn btn-primary w-full" id="btn-admin-login" data-original-text="Masuk ke Panel">Masuk ke Panel</button>
+        </div>
+      </div>
+      <div class="mt-3 flex justify-center"><span id="ws-status-badge" class="badge badge-warning gap-1 badge-sm"><span class="loading loading-ring loading-xs"></span>Menghubungkan...</span></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD (hidden by default) -->
+  <div id="admin-dashboard" class="hidden flex h-screen overflow-hidden">
+    <!-- SIDEBAR -->
+    <aside id="admin-sidebar" class="hidden lg:flex flex-col w-64 bg-neutral text-neutral-content flex-shrink-0 h-full overflow-y-auto">
+      <div class="p-5 border-b border-neutral-content/10"><div class="flex items-center gap-3"><div class="avatar placeholder"><div class="bg-primary text-primary-content rounded-xl w-9"><span class="text-lg font-black">S</span></div></div><div><p class="font-bold text-base">SiAntre Admin</p><p class="text-xs text-neutral-content/40">Panel Petugas</p></div></div></div>
+      <div class="px-4 py-3 border-b border-neutral-content/10"><p class="text-xs text-neutral-content/40 mb-0.5">Masuk sebagai</p><p class="font-semibold text-sm" id="admin-sidebar-name">—</p><div class="flex items-center gap-1 mt-0.5"><span class="badge badge-primary badge-xs" id="admin-sidebar-role">—</span><span class="text-xs text-neutral-content/40" id="admin-sidebar-id"></span></div></div>
+      <nav class="flex-1 px-3 py-4 flex flex-col gap-1" id="admin-nav">
+        <!-- Petugas Menu -->
+        <div id="petugas-menu" class="flex flex-col gap-1">
+          <button class="admin-sidebar-item active" data-admin-view="dashboard"><span>📊</span><span>Dashboard</span></button>
+          <button class="admin-sidebar-item" data-admin-view="kedatangan"><span>✓</span><span>Manajemen Kedatangan</span></button>
+          <button class="admin-sidebar-item" data-admin-view="pengumuman"><span>📢</span><span>Kirim Pengumuman</span></button>
+          <button class="admin-sidebar-item" data-admin-view="reset"><span>🔄</span><span>Reset Quota</span></button>
+          <button class="admin-sidebar-item" data-admin-view="statistik"><span>📈</span><span>Statistik</span></button>
+        </div>
+
+        <!-- Admin Menu -->
+        <div id="admin-only-menu" class="hidden">
+          <div class="divider my-1 text-xs text-neutral-content/30">Pengaturan Sistem</div>
+          <button class="admin-sidebar-item" data-admin-view="petugas"><span>👥</span><span>Manajemen Petugas</span></button>
+        </div>
+      </nav>
+      <div class="px-4 py-3 border-t border-neutral-content/10"><p class="text-xs font-semibold text-neutral-content/40 uppercase tracking-wide mb-2">Status Layanan</p><div id="admin-sidebar-svc" class="flex flex-col gap-1.5"></div></div>
+      <div class="p-4 border-t border-neutral-content/10 flex items-center justify-between"><span id="ws-status-badge-sidebar" class="badge badge-warning gap-1 badge-xs">● WS</span><button class="btn btn-ghost btn-xs text-neutral-content/50" id="btn-admin-logout">Keluar</button></div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <header class="bg-base-100 border-b border-base-200 px-4 py-3 flex items-center justify-between flex-shrink-0">
+        <button class="btn btn-ghost btn-sm lg:hidden" id="btn-admin-sidebar-toggle">☰</button>
+        <h1 class="font-bold text-base" id="admin-page-title">Dashboard</h1>
+        <span class="badge badge-success animate-pulse badge-sm">● LIVE</span>
+      </header>
+      <main class="flex-1 overflow-y-auto p-4 lg:p-6">
+
+        <!-- VIEW 1: DASHBOARD -->
+        <div id="admin-view-dashboard" class="admin-view">
+          <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
+            <div class="stat-card">
+              <div class="flex justify-between items-start mb-1">
+                <span class="stat-label">Total Booking</span>
+                <span class="text-xl">📋</span>
+              </div>
+              <span class="stat-value" id="adm-stat-bookings">—</span>
+            </div>
+            <div class="stat-card">
+              <div class="flex justify-between items-start mb-1">
+                <span class="stat-label">Dilayani</span>
+                <span class="text-xl">✅</span>
+              </div>
+              <span class="stat-value text-success" id="adm-stat-served">—</span>
+            </div>
+            <div class="stat-card">
+              <div class="flex justify-between items-start mb-1">
+                <span class="stat-label">Dibatalkan</span>
+                <span class="text-xl">❌</span>
+              </div>
+              <span class="stat-value text-error" id="adm-stat-cancelled">—</span>
+            </div>
+            <div class="stat-card">
+              <div class="flex justify-between items-start mb-1">
+                <span class="stat-label">Subscriber</span>
+                <span class="text-xl">👥</span>
+              </div>
+              <span class="stat-value text-info" id="adm-stat-subs">—</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" id="admin-queue-cards"><div class="skeleton h-48 rounded-xl"></div><div class="skeleton h-48 rounded-xl"></div><div class="skeleton h-48 rounded-xl"></div></div>
+          <div class="card bg-base-100 shadow-sm mb-4"><div class="card-body"><div class="flex items-center justify-between mb-1"><h3 class="font-semibold text-sm">Antrian vs Quota Tersisa</h3><span class="badge badge-success animate-pulse badge-sm">● LIVE</span></div><div id="admin-queue-chart" style="min-height:220px;"></div></div></div>
+          <div class="card bg-base-100 shadow-sm"><div class="card-body"><div class="flex items-center justify-between mb-2"><h3 class="font-semibold text-sm">Log Aktivitas Admin</h3><button class="btn btn-ghost btn-xs" id="btn-clear-log">Bersihkan</button></div><div id="activity-log" class="flex flex-col gap-1 max-h-64 overflow-y-auto" role="log" aria-live="polite"><p class="log-empty text-base-content/40 italic text-center py-4 text-sm">Menunggu event...</p></div></div></div>
+        </div>
+
+        <!-- VIEW 2: KEDATANGAN -->
+        <div id="admin-view-kedatangan" class="admin-view hidden">
+          <div role="tablist" class="tabs tabs-boxed mb-4">
+            <button role="tab" class="tab tab-active" data-kedatangan-tab="checkin">Check-In Warga</button>
+            <button role="tab" class="tab" data-kedatangan-tab="walkin">Walk-In (Tanpa Booking)</button>
+          </div>
+          <div id="kedatangan-tab-checkin" class="kedatangan-tab max-w-lg">
+            <div class="card bg-base-100 shadow-sm"><div class="card-body">
+              <h3 class="font-semibold mb-1">Konfirmasi Kedatangan Warga</h3>
+              <p class="text-sm text-base-content/60 mb-4">Masukkan kode booking dari warga.</p>
+              <label class="form-control w-full mb-3"><div class="label"><span class="label-text text-xs font-semibold uppercase">Kode Booking</span></div><input type="text" id="adm-booking-code" placeholder="PKB-XXXX" class="input input-bordered w-full font-mono font-bold tracking-widest uppercase" maxlength="10" /></label>
+              <button class="btn btn-primary w-full" id="btn-checkin" data-original-text="✓ Konfirmasi Check-In">✓ Konfirmasi Check-In</button>
+              <div id="checkin-result" class="hidden mt-4"><div class="alert alert-success"><span>✅</span><div><p class="font-bold" id="checkin-result-name">—</p><p class="text-sm">Nomor Antrian: <strong id="checkin-result-number">—</strong></p><p class="text-xs opacity-75" id="checkin-result-detail">—</p></div></div></div>
+            </div></div>
+          </div>
+          <div id="kedatangan-tab-walkin" class="kedatangan-tab hidden max-w-lg">
+            <div class="card bg-base-100 shadow-sm"><div class="card-body">
+              <h3 class="font-semibold mb-1">Daftarkan Warga Walk-In</h3>
+              <p class="text-sm text-base-content/60 mb-4">Untuk warga yang datang langsung tanpa booking online.</p>
+              <label class="form-control w-full mb-3"><div class="label"><span class="label-text text-xs font-semibold uppercase">Layanan</span></div><select id="adm-walkin-service" class="select select-bordered select-sm w-full"><option value="">-- Pilih layanan --</option></select></label>
+              <label class="form-control w-full mb-3"><div class="label"><span class="label-text text-xs font-semibold uppercase">Nama Warga</span></div><input type="text" id="adm-walkin-name" placeholder="Nama warga" class="input input-bordered w-full" /></label>
+              <button class="btn btn-primary w-full" id="btn-walkin" data-original-text="➕ Daftarkan Walk-In">➕ Daftarkan Walk-In</button>
+              <div id="walkin-result" class="hidden mt-4"><div class="alert alert-success"><span>✅</span><div><p class="font-bold">Walk-In Berhasil</p><p class="text-sm">Kode: <span class="font-mono font-bold" id="walkin-result-code">—</span></p><p class="text-sm">Nomor Antrian: <strong id="walkin-result-number">—</strong></p></div></div></div>
+            </div></div>
+          </div>
+        </div>
+
+        <!-- VIEW 3: PENGUMUMAN ADMIN -->
+        <div id="admin-view-pengumuman" class="admin-view hidden max-w-2xl">
+          <div class="card bg-base-100 shadow-sm mb-4"><div class="card-body">
+            <h3 class="font-semibold mb-3">Broadcast Pengumuman ke Warga</h3>
+            <label class="form-control w-full mb-2"><div class="label"><span class="label-text text-xs font-semibold uppercase">Layanan Tujuan</span></div><select id="adm-announce-service" class="select select-bordered select-sm w-full"><option value="">── Semua Layanan ──</option></select></label>
+            <label class="form-control w-full mb-3"><div class="label"><span class="label-text text-xs font-semibold uppercase">Isi Pengumuman</span></div><input type="text" id="adm-announce-msg" placeholder="Ketik pesan pengumuman..." class="input input-bordered w-full" maxlength="200" /></label>
+            <button class="btn btn-primary w-full" id="btn-announce" data-original-text="📢 Kirim Pengumuman">📢 Kirim Pengumuman</button>
+          </div></div>
+          <div class="card bg-base-100 shadow-sm"><div class="card-body"><h3 class="font-semibold text-sm mb-3">Riwayat Pengumuman Hari Ini</h3><div id="admin-announcement-history" class="flex flex-col gap-2"><p class="text-base-content/40 text-sm italic text-center py-4">Belum ada pengumuman.</p></div></div></div>
+        </div>
+
+        <!-- VIEW 4: RESET QUOTA -->
+        <div id="admin-view-reset" class="admin-view hidden max-w-lg">
+          <div class="card bg-base-100 border border-error/20 shadow-sm"><div class="card-body">
+            <h3 class="font-semibold text-error mb-1">⚠️ Reset Quota Harian</h3>
+            <p class="text-sm text-base-content/60 mb-4">Reset akan menghapus semua antrian aktif. <strong class="text-error">Tindakan ini tidak bisa dibatalkan.</strong></p>
+            <label class="form-control w-full mb-4"><div class="label"><span class="label-text text-xs font-semibold uppercase">Layanan</span></div><select id="adm-reset-service" class="select select-bordered select-sm w-full"><option value="">── Semua Layanan ──</option></select></label>
+            <div class="alert alert-warning text-sm mb-4"><div><p class="font-semibold">Dampak reset:</p><ul class="list-disc ml-4 mt-1 text-xs"><li>Semua antrian aktif dihapus</li><li>Slot waktu dibuka kembali</li><li>Nomor antrian di-reset ke 1</li><li>Warga menunggu menerima notifikasi</li></ul></div></div>
+            <button class="btn btn-error w-full" id="btn-reset-quota" data-original-text="🔄 Reset Quota Sekarang">🔄 Reset Quota Sekarang</button>
+          </div></div>
+        </div>
+
+        <!-- VIEW 5: STATISTIK -->
+        <div id="admin-view-statistik" class="admin-view hidden">
+          <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
+            <div class="stat-card">
+              <div class="flex justify-between items-start mb-1"><span class="stat-label">Total Booking</span><span>📋</span></div>
+              <span class="stat-value" id="stat-total-bookings">—</span>
+            </div>
+            <div class="stat-card">
+              <div class="flex justify-between items-start mb-1"><span class="stat-label">Dilayani</span><span>✅</span></div>
+              <span class="stat-value text-success" id="stat-total-served">—</span>
+            </div>
+            <div class="stat-card">
+              <div class="flex justify-between items-start mb-1"><span class="stat-label">Dibatalkan</span><span>❌</span></div>
+              <span class="stat-value text-error" id="stat-total-cancelled">—</span>
+            </div>
+            <div class="stat-card">
+              <div class="flex justify-between items-start mb-1"><span class="stat-label">Live Subs</span><span>👥</span></div>
+              <span class="stat-value text-info" id="stat-subs">—</span>
+            </div>
+          </div>
+          <div class="card bg-base-100 shadow-sm mb-4"><div class="card-body"><h3 class="font-semibold text-sm mb-3">Quota Terpakai vs Menunggu</h3><div id="stat-detail-chart" style="min-height:250px;"></div></div></div>
+          <div class="card bg-base-100 shadow-sm"><div class="card-body"><h3 class="font-semibold text-sm mb-3">Detail Per Layanan</h3><div class="overflow-x-auto"><table class="table table-sm"><thead><tr><th>Layanan</th><th>Quota</th><th>Terpakai</th><th>Menunggu</th><th>Nomor Saat Ini</th><th>Status</th></tr></thead><tbody id="stat-table-body"><tr><td colspan="6" class="text-center text-base-content/40 py-4">Memuat data...</td></tr></tbody></table></div></div></div>
+        </div>
+
+        <!-- VIEW 6: MANAJEMEN PETUGAS (ADMIN) -->
+        <div id="admin-view-petugas" class="admin-view hidden">
+          <div class="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
+            <div class="card bg-base-100 shadow-sm"><div class="card-body"><div class="flex items-center justify-between mb-3"><h3 class="font-semibold">Daftar Petugas Terdaftar</h3><button class="btn btn-ghost btn-xs" id="btn-refresh-officers">↻ Refresh</button></div><div class="overflow-x-auto"><table class="table table-sm"><thead><tr><th>ID</th><th>Nama</th><th>Jabatan</th><th>Role</th><th>Aksi</th></tr></thead><tbody id="officers-table-body"><tr><td colspan="5" class="text-center text-base-content/40 py-6">Memuat...</td></tr></tbody></table></div></div></div>
+            <div class="card bg-base-100 shadow-sm"><div class="card-body">
+              <h3 class="font-semibold mb-1">Tambah Petugas Baru</h3>
+              <p class="text-xs text-base-content/50 mb-3">Memerlukan PIN Anda untuk konfirmasi.</p>
+              <div class="flex flex-col gap-2">
+                <label class="form-control"><div class="label"><span class="label-text text-xs font-semibold uppercase">PIN Anda (konfirmasi)</span></div><input type="password" id="officer-req-pin" class="input input-bordered input-sm" /></label>
+                <label class="form-control"><div class="label"><span class="label-text text-xs font-semibold uppercase">ID Pegawai Baru</span></div><input type="text" id="new-officer-id" placeholder="P002" class="input input-bordered input-sm" /></label>
+                <label class="form-control"><div class="label"><span class="label-text text-xs font-semibold uppercase">Nama Lengkap</span></div><input type="text" id="new-officer-nama" class="input input-bordered input-sm" /></label>
+                <label class="form-control"><div class="label"><span class="label-text text-xs font-semibold uppercase">Jabatan</span></div><input type="text" id="new-officer-jabatan" placeholder="Petugas Loket" class="input input-bordered input-sm" /></label>
+                <label class="form-control"><div class="label"><span class="label-text text-xs font-semibold uppercase">Role</span></div><select id="new-officer-role" class="select select-bordered select-sm"><option value="PETUGAS">PETUGAS</option><option value="ADMIN">ADMIN</option></select></label>
+                <label class="form-control"><div class="label"><span class="label-text text-xs font-semibold uppercase">PIN Baru (min 6 digit)</span></div><input type="password" id="new-officer-pin" class="input input-bordered input-sm" /></label>
+                <button class="btn btn-primary btn-sm w-full mt-1" id="btn-add-officer" data-original-text="➕ Tambah Petugas">➕ Tambah Petugas</button>
+              </div>
+            </div></div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Confirmation Modal -->
+  <dialog id="modal-confirm" class="modal">
+    <div class="modal-box max-w-xs text-center">
+      <div class="text-error text-5xl mb-4">⚠️</div>
+      <h3 class="font-bold text-lg" id="modal-confirm-title">Konfirmasi</h3>
+      <p class="py-4 text-sm opacity-70" id="modal-confirm-body">Apakah Anda yakin?</p>
+      <div class="flex gap-2">
+        <button class="btn btn-ghost flex-1" onclick="document.getElementById('modal-confirm').close()">Batal</button>
+        <button class="btn btn-error flex-1" id="modal-confirm-btn">Ya, Lanjutkan</button>
       </div>
     </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
 
-    <!-- Dashboard Section (ditampilkan setelah login) -->
-    <div id="admin-dashboard-section" class="hidden">
-
-      <!-- Stats Cards -->
-      <div class="stats shadow w-full mb-6 bg-base-100">
-        <div class="stat">
-          <div class="stat-title">Total Booking</div>
-          <div id="stat-bookings" class="stat-value text-primary">0</div>
-          <div class="stat-desc">Hari ini</div>
-        </div>
-        <div class="stat">
-          <div class="stat-title">Sudah Dilayani</div>
-          <div id="stat-served" class="stat-value text-success">0</div>
-          <div class="stat-desc">Hari ini</div>
-        </div>
-        <div class="stat">
-          <div class="stat-title">Dibatalkan</div>
-          <div id="stat-cancelled" class="stat-value text-error">0</div>
-          <div class="stat-desc">Hari ini</div>
-        </div>
-        <div class="stat">
-          <div class="stat-title">Subscriber Aktif</div>
-          <div id="stat-subscribers" class="stat-value text-info">0</div>
-          <div class="stat-desc">Real-time</div>
-        </div>
+  <!-- Edit Officer Modal -->
+  <dialog id="modal-edit-officer" class="modal">
+    <div class="modal-box max-w-sm">
+      <h3 class="font-bold text-lg mb-4">Edit Petugas</h3>
+      <div class="flex flex-col gap-2">
+        <label class="form-control">
+          <div class="label"><span class="label-text text-xs font-semibold uppercase">ID Pegawai</span></div>
+          <input type="text" id="edit-officer-id" readonly class="input input-bordered input-sm bg-base-200" />
+        </label>
+        <label class="form-control">
+          <div class="label"><span class="label-text text-xs font-semibold uppercase">Nama Lengkap</span></div>
+          <input type="text" id="edit-officer-nama" class="input input-bordered input-sm" />
+        </label>
+        <label class="form-control">
+          <div class="label"><span class="label-text text-xs font-semibold uppercase">Jabatan</span></div>
+          <input type="text" id="edit-officer-jabatan" class="input input-bordered input-sm" />
+        </label>
+        <label class="form-control">
+          <div class="label"><span class="label-text text-xs font-semibold uppercase">Role</span></div>
+          <select id="edit-officer-role" class="select select-bordered select-sm">
+            <option value="PETUGAS">PETUGAS</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
+        </label>
+        <label class="form-control">
+          <div class="label"><span class="label-text text-xs font-semibold uppercase">PIN Baru (Kosongkan jika tidak diubah)</span></div>
+          <input type="password" id="edit-officer-pin" placeholder="••••••" class="input input-bordered input-sm" />
+        </label>
       </div>
-
-      <!-- Control Panel + Log -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-
-        <!-- Command Panel -->
-        <div class="card bg-base-100 shadow-xl">
-          <div class="card-body">
-            <h2 class="card-title text-sm uppercase tracking-wider opacity-70">⚙️ Kontrol Layanan</h2>
-
-            <!-- Pilih layanan -->
-            <select id="select-service" class="select select-bordered w-full mt-2">
-              <option disabled selected>Pilih layanan...</option>
-            </select>
-
-            <!-- Action buttons -->
-            <div class="grid grid-cols-2 gap-2 mt-4">
-              <button id="btn-call-next" class="btn btn-primary btn-sm">📢 Panggil Berikutnya</button>
-              <button id="btn-checkin" class="btn btn-accent btn-sm">✅ Check-in Warga</button>
-              <button id="btn-pause" class="btn btn-warning btn-sm">⏸ Pause Layanan</button>
-              <button id="btn-resume" class="btn btn-success btn-sm">▶ Resume Layanan</button>
-              <button id="btn-walkin" class="btn btn-info btn-sm col-span-2">🚶 Walk-in Warga</button>
-            </div>
-
-            <!-- Announcement -->
-            <div class="divider text-xs opacity-50">Pengumuman</div>
-            <div class="flex gap-2">
-              <input id="input-announce-msg" type="text" placeholder="Tulis pengumuman..."
-                     class="input input-bordered input-sm flex-1" />
-              <button id="btn-announce" class="btn btn-outline btn-sm">📣 Kirim</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Activity Log -->
-        <div class="card bg-base-100 shadow-xl">
-          <div class="card-body">
-            <h2 class="card-title text-sm uppercase tracking-wider opacity-70">
-              📋 Log Aktivitas
-              <span id="log-count" class="badge badge-sm badge-ghost">0</span>
-            </h2>
-            <div id="activity-log" class="max-h-64 overflow-y-auto space-y-1 text-sm font-mono">
-              <p class="opacity-40">Menunggu koneksi...</p>
-            </div>
-          </div>
-        </div>
+      <div class="modal-action">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-edit-officer').close()">Batal</button>
+        <button class="btn btn-primary btn-sm" id="btn-save-officer" data-original-text="Simpan Perubahan">Simpan Perubahan</button>
       </div>
-
-      <!-- Grafik + Queue -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div class="card bg-base-100 shadow-xl">
-          <div class="card-body">
-            <h2 class="card-title text-sm uppercase tracking-wider opacity-70">📊 Grafik Antrian</h2>
-            <div id="queue-chart" class="w-full h-64"></div>
-          </div>
-        </div>
-        <div class="card bg-base-100 shadow-xl">
-          <div class="card-body">
-            <h2 class="card-title text-sm uppercase tracking-wider opacity-70">👥 Manajemen Petugas</h2>
-            <div id="officers-list" class="space-y-2">
-              <p class="text-sm opacity-40">Belum ada data petugas.</p>
-            </div>
-            <div class="card-actions justify-end mt-4">
-              <button id="btn-list-officers" class="btn btn-ghost btn-xs">Refresh</button>
-              <button id="btn-register-officer" class="btn btn-outline btn-xs">+ Tambah Petugas</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </div>
-  </main>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
 
-  <!-- Toast container -->
-  <div id="toast-container" class="toast toast-end toast-bottom z-50"></div>
-
-  <!-- Scripts -->
   <script src="js/ws-client.js"></script>
-  <script src="js/chart.js"></script>
-  <script src="js/activity-log.js"></script>
   <script src="js/notification.js"></script>
+  <script src="js/activity-log.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/status-indicator.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

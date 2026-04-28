@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SiAntre — Sistem antrian digital SAMSAT untuk Pembayaran Pajak Kendaraan, Perpanjangan STNK, dan Pembuatan STNK baru." />
+  <title>SiAntre — Dashboard Warga</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"
+          integrity="sha512-aNMyYYxdIxIaot0Y1/PLuEu3eipGCmsEUBrUq+7aVyPGMFH8z0eTP0tkqAvv34fzN6z+201d3T8HPb1svWSKHQ=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="bg-base-200 min-h-screen font-[Plus_Jakarta_Sans]">
+
+  <!-- Session guard -->
+  <script>
+    (function() {
+      if (!sessionStorage.getItem('siantre_user')) {
+        window.location.href = '/';
+      }
+    })();
+  </script>
+
+  <!-- Toast container — BUG-M5 FIX: z-[1100] so it renders above modals (z-999) -->
+  <div id="toast-container" class="toast toast-top toast-end z-[1100]"></div>
+
+  <!-- LAYOUT WRAPPER -->
+  <div class="flex h-screen overflow-hidden">
+
+    <!-- ── SIDEBAR (Desktop: fixed, Mobile: drawer) ──────────────── -->
+    <aside id="sidebar"
+      class="hidden lg:flex flex-col w-64 bg-base-100 border-r border-base-200 flex-shrink-0 h-full overflow-y-auto"
+    >
+      <!-- Logo -->
+      <div class="p-5 border-b border-base-200">
+        <div class="flex items-center gap-3">
+          <div class="avatar placeholder">
+            <div class="bg-primary text-primary-content rounded-xl w-9">
+              <span class="text-lg font-black">S</span>
+            </div>
+          </div>
+          <div>
+            <p class="font-bold text-base leading-tight">SiAntre</p>
+            <p class="text-xs text-base-content/40">SAMSAT Digital</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- User info -->
+      <div class="px-4 py-3 border-b border-base-200">
+        <p class="text-xs text-base-content/40 mb-0.5">Masuk sebagai</p>
+        <p class="font-semibold text-sm truncate" id="sidebar-user-name">—</p>
+        <p class="text-xs text-base-content/40 font-mono" id="sidebar-user-nik">NIK: —</p>
+      </div>
+
+      <!-- Nav menu -->
+      <nav class="flex-1 px-3 py-4 flex flex-col gap-1">
+        <button class="sidebar-menu-item active" data-view="booking">
+          <span class="text-lg">📋</span>
+          <span>Booking Baru</span>
+        </button>
+        <button class="sidebar-menu-item" data-view="riwayat">
+          <span class="text-lg">📁</span>
+          <span>Riwayat Booking</span>
+        </button>
+        <button class="sidebar-menu-item" data-view="monitor">
+          <span class="text-lg">📡</span>
+          <span>Monitor Antrian</span>
+        </button>
+        <button class="sidebar-menu-item" data-view="pengumuman">
+          <span class="text-lg">📢</span>
+          <span>Pengumuman</span>
+          <span class="ann-badge hidden ml-auto" id="ann-badge-count"></span>
+        </button>
+      </nav>
+
+      <!-- Status Layanan Sidebar -->
+      <div class="px-4 py-3 border-t border-base-200">
+        <p class="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-2">Status Layanan</p>
+        <div id="sidebar-service-status" class="flex flex-col gap-1.5">
+          <div class="skeleton h-5 rounded"></div>
+          <div class="skeleton h-5 rounded"></div>
+          <div class="skeleton h-5 rounded"></div>
+        </div>
+      </div>
+
+      <!-- Logout -->
+      <div class="p-4 border-t border-base-200">
+        <button class="btn btn-ghost btn-sm w-full text-base-content/50" id="btn-logout-warga">
+          ← Keluar
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── MAIN AREA ──────────────────────────────────────────────── -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+
+      <!-- Topbar (mobile + desktop) -->
+      <header class="bg-base-100 border-b border-base-200 px-4 py-3 flex items-center justify-between flex-shrink-0">
+        <button class="btn btn-ghost btn-sm lg:hidden" id="btn-sidebar-toggle">☰</button>
+        <h1 class="font-bold text-base" id="page-title">Booking Baru</h1>
+        <div class="flex items-center gap-3">
+          <span id="ws-status-badge" class="badge badge-warning gap-1 badge-sm">
+            <span class="loading loading-ring loading-xs"></span>
+            Menghubungkan...
+          </span>
+        </div>
+      </header>
+
+      <!-- Mobile Sidebar Drawer (overlay) -->
+      <div id="mobile-sidebar-overlay"
+        class="hidden fixed inset-0 bg-black/40 z-40 lg:hidden"
+      >
+        <aside id="mobile-sidebar"
+          class="absolute left-0 top-0 bottom-0 w-72 bg-base-100 flex flex-col shadow-xl"
+          style="transform: translateX(-100%)"
+        >
+          <!-- Clone struktur sidebar desktop via JS -->
+        </aside>
+      </div>
+
+      <!-- Scrollable content area — OPT-5 FIX: pb-20 so bottom nav doesn't overlap last card -->
+      <main class="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">
+
+        <!-- ════════════════════════════════════════════ -->
+        <!--   VIEW 1: BOOKING                           -->
+        <!-- ════════════════════════════════════════════ -->
+        <div id="view-booking" class="warga-view max-w-2xl mx-auto">
+
+          <!-- Step indicator -->
+          <div class="flex items-center gap-2 mb-6">
+            <div class="booking-step active" data-step="1" id="step-bar-1"></div>
+            <div class="booking-step" data-step="2" id="step-bar-2"></div>
+            <div class="booking-step" data-step="3" id="step-bar-3"></div>
+          </div>
+          <div class="flex justify-between text-xs text-base-content/50 mb-6 px-0.5">
+            <span id="step-label-1" class="font-semibold text-primary">1. Pilih Layanan</span>
+            <span id="step-label-2">2. Pilih Slot</span>
+            <span id="step-label-3">3. Konfirmasi</span>
+          </div>
+
+          <!-- STEP 1: Pilih Layanan -->
+          <div id="booking-step-1">
+            <h2 class="text-lg font-bold mb-4">Pilih Layanan</h2>
+            <div id="booking-service-cards" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+              <div class="skeleton h-28 rounded-xl"></div>
+              <div class="skeleton h-28 rounded-xl"></div>
+              <div class="skeleton h-28 rounded-xl"></div>
+            </div>
+            <div id="booking-requirements" class="hidden alert alert-info mb-4">
+              <div>
+                <p class="font-semibold text-sm mb-1">📋 Persyaratan Dokumen:</p>
+                <ul id="booking-requirements-list" class="text-sm list-disc ml-4"></ul>
+              </div>
+            </div>
+            <button class="btn btn-primary w-full mt-2 hidden" id="btn-booking-next-1">Lanjut ke Pilih Slot →</button>
+          </div>
+
+          <!-- STEP 2: Pilih Slot -->
+          <div id="booking-step-2" class="hidden">
+            <div class="flex items-center gap-3 mb-4">
+              <button class="btn btn-ghost btn-sm" id="btn-booking-back-2">← Kembali</button>
+              <h2 class="text-lg font-bold">Pilih Slot Waktu</h2>
+            </div>
+            <div class="mb-4">
+              <label class="form-control w-full max-w-xs">
+                <div class="label">
+                  <span class="label-text text-xs font-semibold uppercase">Tanggal Kunjungan</span>
+                </div>
+                <input type="date" id="booking-date-picker" class="input input-bordered input-sm" />
+              </label>
+            </div>
+            <div id="booking-slot-grid" class="flex flex-wrap gap-2 mb-6"></div>
+            <button class="btn btn-primary w-full hidden" id="btn-booking-next-2">Lanjut ke Konfirmasi →</button>
+          </div>
+
+          <!-- STEP 3: Konfirmasi -->
+          <div id="booking-step-3" class="hidden">
+            <div class="flex items-center gap-3 mb-4">
+              <button class="btn btn-ghost btn-sm" id="btn-booking-back-3">← Kembali</button>
+              <h2 class="text-lg font-bold">Konfirmasi Booking</h2>
+            </div>
+            <div class="card bg-base-100 border border-base-300 mb-4">
+              <div class="card-body p-4 space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-base-content/60">Layanan</span>
+                  <span class="font-semibold" id="confirm-service-name">—</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-base-content/60">Tanggal</span>
+                  <span class="font-semibold" id="confirm-slot-date">—</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-base-content/60">Jam</span>
+                  <span class="font-semibold" id="confirm-slot-time">—</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-base-content/60">Atas Nama</span>
+                  <span class="font-semibold" id="confirm-citizen-name">—</span>
+                </div>
+              </div>
+            </div>
+            <div class="alert alert-warning text-sm mb-4">
+              <span>⚠️</span>
+              <span>Hadir <strong>minimal 15 menit sebelum</strong> sesi dimulai. Booking expired jika melewati batas.</span>
+            </div>
+            <div class="flex gap-3" id="booking-actions">
+              <button class="btn btn-ghost flex-1" id="btn-booking-cancel-confirm">Batal</button>
+              <button class="btn btn-primary flex-1" id="btn-booking-confirm"
+                data-original-text="Konfirmasi Booking ✓">Konfirmasi Booking ✓</button>
+            </div>
+            <div id="booking-success-result" class="hidden mt-4">
+              <div class="alert alert-success flex flex-col items-start gap-3 relative overflow-hidden">
+                <!-- Progress bar countdown -->
+                <div id="booking-success-progress" class="absolute bottom-0 left-0 h-1 bg-white/40 w-full origin-left"></div>
+                
+                <div class="flex items-center gap-3">
+                  <span>✅</span>
+                  <div>
+                    <p class="font-bold">Booking Berhasil!</p>
+                    <p class="text-sm">Kode: <span class="font-mono font-bold select-all" id="booking-result-code">—</span> 
+                      <button class="btn btn-ghost btn-xs text-[10px]" onclick="navigator.clipboard.writeText(document.getElementById('booking-result-code').textContent); showNotification('Disalin', 'Kode booking berhasil disalin.', 'success')">Salin</button>
+                    </p>
+                    <p class="text-xs opacity-70">Tunjukkan kode ini ke petugas SAMSAT saat tiba.</p>
+                  </div>
+                </div>
+                <div class="flex gap-2 w-full mt-2">
+                  <button class="btn btn-sm btn-outline btn-white flex-1" id="btn-view-history-after-success">Lihat Riwayat Booking</button>
+                  <button class="btn btn-sm btn-ghost btn-white flex-1" id="btn-book-again">Booking Lagi</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /view-booking -->
+
+        <!-- ════════════════════════════════════════════ -->
+        <!--   VIEW 2: RIWAYAT                          -->
+        <!-- ════════════════════════════════════════════ -->
+        <div id="view-riwayat" class="warga-view hidden max-w-2xl mx-auto">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold">Riwayat Booking</h2>
+            <button class="btn btn-ghost btn-xs" id="btn-refresh-bookings">↻ Refresh</button>
+          </div>
+          <div id="booking-list-container">
+            <div class="flex flex-col gap-3" id="booking-list">
+              <div class="skeleton h-24 rounded-xl"></div>
+              <div class="skeleton h-24 rounded-xl"></div>
+            </div>
+          </div>
+          <!-- Reschedule Modal -->
+          <dialog id="modal-reschedule" class="modal">
+            <div class="modal-box max-w-md">
+              <h3 class="font-bold text-lg mb-4">Ubah Jadwal</h3>
+              <p class="text-sm text-base-content/60 mb-1">Kode: <span id="reschedule-code" class="font-mono font-bold"></span></p>
+              <p class="text-sm text-base-content/60 mb-3">Jadwal saat ini: <span id="reschedule-current"></span></p>
+              <div class="mb-3">
+                <label class="form-control w-full">
+                  <div class="label"><span class="label-text text-xs font-semibold uppercase">Tanggal Baru</span></div>
+                  <input type="date" id="reschedule-date" class="input input-bordered input-sm" />
+                </label>
+              </div>
+              <div id="reschedule-slot-grid" class="flex flex-wrap gap-2 mb-4"></div>
+              <div class="modal-action">
+                <button class="btn btn-ghost" onclick="document.getElementById('modal-reschedule').close()">Batal</button>
+                <button class="btn btn-primary" id="btn-confirm-reschedule" data-original-text="Simpan Jadwal Baru">Simpan Jadwal Baru</button>
+              </div>
+            </div>
+            <form method="dialog" class="modal-backdrop"><button>close</button></form>
+          </dialog>
+        </div><!-- /view-riwayat -->
+
+        <!-- ════════════════════════════════════════════ -->
+        <!--   VIEW 3: MONITOR                           -->
+        <!-- ════════════════════════════════════════════ -->
+        <div id="view-monitor" class="warga-view hidden max-w-2xl mx-auto">
+          <h2 class="text-lg font-bold mb-4">📡 Monitor Antrian Live</h2>
+          <div class="mb-4">
+            <label class="form-control w-full max-w-xs">
+              <div class="label"><span class="label-text text-xs font-semibold uppercase">Pilih Layanan</span></div>
+              <select id="monitor-service-select" class="select select-bordered select-sm w-full">
+                <option value="">-- Pilih layanan --</option>
+              </select>
+            </label>
+          </div>
+          <div class="card bg-base-100 shadow-sm mb-4">
+            <div class="card-body text-center py-8">
+              <p class="text-xs font-semibold uppercase tracking-widest text-base-content/40 mb-2">
+                Nomor Sedang Dilayani
+              </p>
+              <div id="monitor-current-number" class="queue-number-big text-7xl">—</div>
+              <p class="text-sm text-base-content/50 mt-3" id="monitor-service-label">Pilih layanan untuk memulai</p>
+
+              <div class="stats stats-horizontal shadow-none bg-base-200 rounded-xl mt-4 w-full text-sm">
+                <div class="stat place-items-center py-2">
+                  <div class="stat-title text-xs">Menunggu</div>
+                  <div class="stat-value text-xl text-warning" id="monitor-total-waiting">—</div>
+                </div>
+                <div class="stat place-items-center py-2">
+                  <div class="stat-title text-xs">Nomor Anda</div>
+                  <div class="stat-value text-xl text-primary" id="monitor-my-number">—</div>
+                </div>
+                <div class="stat place-items-center py-2">
+                  <div class="stat-title text-xs">Di Depan</div>
+                  <div class="stat-value text-xl" id="monitor-people-ahead">—</div>
+                </div>
+                <div class="stat place-items-center py-2">
+                  <div class="stat-title text-xs">Estimasi</div>
+                  <div class="stat-value text-base text-success" id="monitor-est-wait">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="font-semibold text-sm">Log Event Antrian</h3>
+                <span class="badge badge-success animate-pulse badge-sm">● LIVE</span>
+              </div>
+              <div id="monitor-event-log" class="flex flex-col gap-1 max-h-52 overflow-y-auto text-sm" role="log">
+                <p class="text-base-content/40 italic text-center py-4">Pilih layanan untuk memantau.</p>
+              </div>
+            </div>
+          </div>
+        </div><!-- /view-monitor -->
+
+        <!-- ════════════════════════════════════════════ -->
+        <!--   VIEW 4: PENGUMUMAN                        -->
+        <!-- ════════════════════════════════════════════ -->
+        <div id="view-pengumuman" class="warga-view hidden max-w-2xl mx-auto">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold">📢 Papan Pengumuman</h2>
+            <button class="btn btn-ghost btn-xs" id="btn-refresh-announcements">↻ Refresh</button>
+          </div>
+          <div id="announcement-list" class="flex flex-col gap-3">
+            <p class="text-base-content/40 italic text-center py-8">Memuat pengumuman...</p>
+          </div>
+        </div><!-- /view-pengumuman -->
+
+      </main>
+    </div><!-- /main area -->
+  </div><!-- /layout wrapper -->
+
+  <!-- Bottom nav (Mobile only) -->
+  <!-- Confirmation Modal -->
+  <dialog id="modal-confirm" class="modal">
+    <div class="modal-box max-w-xs text-center">
+      <div class="text-error text-5xl mb-4">⚠️</div>
+      <h3 class="font-bold text-lg" id="modal-confirm-title">Konfirmasi</h3>
+      <p class="py-4 text-sm opacity-70" id="modal-confirm-body">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+      <div class="flex gap-2">
+        <button class="btn btn-ghost flex-1" onclick="document.getElementById('modal-confirm').close()">Batal</button>
+        <button class="btn btn-error flex-1" id="modal-confirm-btn">Ya, Lanjutkan</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <nav class="btm-nav lg:hidden z-30 bg-base-100 border-t border-base-200">
+    <button data-view="booking" class="btm-nav-item text-xs active">
+      <span class="text-lg">📋</span>
+      <span class="btm-nav-label">Booking</span>
+    </button>
+    <button data-view="riwayat" class="btm-nav-item text-xs">
+      <span class="text-lg">📁</span>
+      <span class="btm-nav-label">Riwayat</span>
+    </button>
+    <button data-view="monitor" class="btm-nav-item text-xs">
+      <span class="text-lg">📡</span>
+      <span class="btm-nav-label">Monitor</span>
+    </button>
+    <button data-view="pengumuman" class="btm-nav-item text-xs">
+      <span class="text-lg relative">📢
+        <span class="ann-badge hidden absolute -top-1 -right-1" id="btm-ann-badge"></span>
+      </span>
+      <span class="btm-nav-label">Pengumuman</span>
+    </button>
+  </nav>
+
+  <script src="js/ws-client.js"></script>
+  <script src="js/notification.js"></script>
+  <script src="js/queue-animation.js"></script>
+  <script src="js/activity-log.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/status-indicator.js"></script>
+  <script src="js/warga.js"></script>
+</body>
+</html>

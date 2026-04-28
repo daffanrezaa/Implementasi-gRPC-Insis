@@ -1,53 +1,122 @@
 (function () {
   let chart = null;
+  let adminChart = null;
 
-  const chartOptions = {
+  const commonOptions = {
     chart: {
       type:       'bar',
       height:     220,
-      fontFamily: 'inherit',
+      fontFamily: 'Plus Jakarta Sans, sans-serif',
       toolbar:    { show: false },
-      animations: {
-        enabled:          true,
-        easing:           'easeinout',
-        speed:            500,
-        dynamicAnimation: { enabled: true, speed: 400 },
-      },
-      background: 'transparent',
-    },
-    series: [{ name: 'Menunggu', data: [] }],
-    xaxis: {
-      categories: [],
-      labels: { style: { colors: 'currentColor', opacity: 0.7 } }
-    },
-    yaxis: {
-      labels: { style: { colors: 'currentColor', opacity: 0.7 } }
+      animations: { enabled: true, easing: 'easeinout', speed: 800 },
     },
     plotOptions: {
-      bar: { borderRadius: 4, horizontal: false, distributed: true }
+      bar: {
+        borderRadius: 4,
+        columnWidth:  '55%',
+        distributed:  false,
+      }
     },
-    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
-    dataLabels: { enabled: true },
-    tooltip: { theme: 'dark' }
+    dataLabels: { enabled: false },
+    legend:     { position: 'top', fontSize: '12px' },
+    grid:       { borderColor: 'rgba(0,0,0,0.05)' },
+    xaxis: {
+      categories: [],
+      labels: { style: { fontSize: '11px', fontWeight: 600 } }
+    },
+    colors: ['oklch(var(--p))', 'oklch(var(--s)/0.3)'],
+    tooltip: { theme: 'light' }
   };
 
-  function initChart() {
-    const el = document.querySelector('#queue-chart');
-    if (!el) return;
-    chart = new ApexCharts(el, chartOptions);
-    chart.render();
+  function initChart(containerId, isWarga = true) {
+    const el = document.getElementById(containerId);
+    if (!el) return null;
+
+    const options = {
+      ...commonOptions,
+      series: [
+        { name: 'Menunggu', data: [] },
+        { name: 'Sisa Kuota', data: [] }
+      ],
+    };
+
+    const c = new ApexCharts(el, options);
+    c.render();
+    return c;
   }
 
-  EventBus.on('queueChartUpdate', (stats) => {
-    if (!chart || !stats || !stats.per_service) return;
+  function updateChart(c, perService) {
+    if (!c || !perService) return;
 
-    // Pastikan Object.keys(stats.per_service) di-sort atau konsisten jika diperlukan.
-    const categories = Object.keys(stats.per_service);
-    const data       = categories.map(k => stats.per_service[k].waiting_count || 0);
+    const categories = perService.map(s => s.service_short_code || s.service_id);
+    const waiting    = perService.map(s => s.waiting_count);
+    const quota      = perService.map(s => s.quota_remaining);
 
-    chart.updateSeries([{ name: 'Menunggu', data }]);
-    chart.updateOptions({ xaxis: { categories } });
+    c.updateOptions({
+      xaxis: { categories: categories }
+    });
+
+    c.updateSeries([
+      { name: 'Menunggu', data: waiting },
+      { name: 'Sisa Kuota', data: quota }
+    ]);
+  }
+
+  // Handle stats push
+  EventBus.on('statsUpdate', (msg) => {
+    const stats = msg.payload || msg; // handle both raw and msg wrapper
+    
+    const updateVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
+
+    // Dashboard Cards
+    updateVal('adm-stat-bookings',  stats.total_bookings_today);
+    updateVal('adm-stat-served',    stats.total_served_today);
+    updateVal('adm-stat-cancelled', stats.total_cancelled_today);
+    updateVal('adm-stat-subs',      stats.active_subscribers);
+
+    // Statistics View Cards
+    updateVal('stat-total-bookings',  stats.total_bookings_today);
+    updateVal('stat-total-served',    stats.total_served_today);
+    updateVal('stat-total-cancelled', stats.total_cancelled_today);
+    updateVal('stat-subs',            stats.active_subscribers);
+
+    // BUG-L2 FIX: Only init/update charts when container is visible
+    if (stats.per_service) {
+      const chartEl      = document.getElementById('admin-queue-chart');
+      const statChartEl  = document.getElementById('stat-detail-chart');
+
+      // Only init if element exists AND is visible (not inside a hidden parent)
+      if (chartEl && chartEl.offsetParent !== null) {
+        if (!chart) chart = initChart('admin-queue-chart', false);
+        if (chart) updateChart(chart, stats.per_service);
+      }
+
+      if (statChartEl && statChartEl.offsetParent !== null) {
+        if (!adminChart) adminChart = initChart('stat-detail-chart', false);
+        if (adminChart) updateChart(adminChart, stats.per_service);
+      }
+
+      // Also update Stats Table if exists
+      const tableBody = document.getElementById('stat-table-body');
+      if (tableBody) {
+        tableBody.innerHTML = stats.per_service.map(s => `
+          <tr>
+            <td class="font-bold text-xs">${s.service_name}</td>
+            <td>${s.quota_total}</td>
+            <td>${s.quota_used}</td>
+            <td class="text-warning font-bold">${s.waiting_count}</td>
+            <td class="font-mono">${s.current_number || '—'}</td>
+            <td><span class="badge badge-xs ${s.is_open ? 'badge-success' : 'badge-ghost'}">${s.is_open ? 'BUKA' : 'TUTUP'}</span></td>
+          </tr>
+        `).join('');
+      }
+    }
   });
 
-  document.addEventListener('DOMContentLoaded', initChart);
+  // Export for manual trigger
+  window.initQueueChart = initChart;
+
 })();

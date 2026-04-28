@@ -140,9 +140,13 @@ function UpdateOfficer(call, callback) {
 
     const updates = {};
     if (new_nama && new_nama.trim().length >= 2) updates.nama = new_nama.trim();
+    if (new_jabatan && new_jabatan.trim().length >= 2) updates.jabatan = new_jabatan.trim();
     if (new_role && ['PETUGAS', 'ADMIN'].includes(new_role.toUpperCase())) {
       updates.role = new_role.toUpperCase();
-      updates.jabatan = updates.role === 'ADMIN' ? 'Administrator' : 'Petugas Loket';
+      // If no custom jabatan is provided, use default based on role
+      if (!new_jabatan) {
+        updates.jabatan = updates.role === 'ADMIN' ? 'Administrator' : 'Petugas Loket';
+      }
     }
     if (new_pin && new_pin.trim().length >= 6) updates.pin = new_pin.trim();
 

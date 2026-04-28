@@ -1,0 +1,234 @@
+/* ── Font & Base ──────────────────────────────────────────────────── */
+body { font-family: 'Plus Jakarta Sans', sans-serif; }
+html { scroll-behavior: smooth; }
+
+/* Fix input autofill background flash on Chrome */
+input:-webkit-autofill { transition: background-color 5000s ease-in-out 0s; }
+
+/* ── Sidebar Navigation ────────────────────────────────────────────── */
+.sidebar-menu-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 8px; cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-left 0.15s;
+  color: oklch(var(--bc)/0.65); font-size: 14px; font-weight: 500;
+  background: transparent; border: none; width: 100%; text-align: left;
+}
+.sidebar-menu-item:hover { background: oklch(var(--b2)); color: oklch(var(--bc)); }
+.sidebar-menu-item:focus-visible { outline: 2px solid oklch(var(--p)); outline-offset: -2px; }
+.sidebar-menu-item.active {
+  background: oklch(var(--p)/0.1); color: oklch(var(--p));
+  font-weight: 600; border-left: 3px solid oklch(var(--p)); padding-left: 9px;
+}
+
+/* ── Warga View (show/hide) ─────────────────────────────────────────── */
+.warga-view { animation: view-enter 0.25s ease; }
+@keyframes view-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Queue Number Display ───────────────────────────────────────────── */
+.queue-number-big {
+  font-size: clamp(3.5rem, 8vw, 5rem);
+  font-weight: 900; font-variant-numeric: tabular-nums;
+  letter-spacing: -4px; color: oklch(var(--p));
+  display: inline-block; transform-origin: center bottom; line-height: 1;
+}
+
+/* ── Service Card (Booking step 1) ─────────────────────────────────── */
+.service-booking-card {
+  background: oklch(var(--b1)); border: 2px solid oklch(var(--b3));
+  border-radius: 12px; padding: 1rem; cursor: pointer;
+  transition: all 0.2s ease; text-align: left; position: relative;
+  overflow: hidden;
+}
+.service-booking-card::after {
+  content: ''; position: absolute; inset: 0; 
+  background: linear-gradient(135deg, oklch(var(--p)/0.04), transparent);
+  opacity: 0; transition: opacity 0.2s;
+}
+.service-booking-card:hover:not(.is-closed)::after { opacity: 1; }
+.service-booking-card:hover:not(.is-closed) {
+  border-color: oklch(var(--p)/0.5); transform: translateY(-2px);
+  box-shadow: 0 4px 12px oklch(var(--p)/0.08);
+}
+.service-booking-card.selected {
+  border-color: oklch(var(--p)); background: oklch(var(--p)/0.07);
+  box-shadow: 0 2px 8px oklch(var(--p)/0.12);
+}
+.service-booking-card.is-closed { opacity: 0.45; cursor: not-allowed; }
+.service-booking-card:focus-visible { outline: 2px solid oklch(var(--p)); outline-offset: 2px; }
+
+/* ── Slot Time Button ───────────────────────────────────────────────── */
+.slot-btn {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 8px 14px; border-radius: 8px;
+  border: 1.5px solid oklch(var(--b3)); cursor: pointer;
+  transition: all 0.15s ease; min-width: 72px; background: oklch(var(--b1));
+}
+.slot-btn:hover:not([disabled]) { 
+  border-color: oklch(var(--p)); transform: translateY(-1px);
+  box-shadow: 0 2px 6px oklch(var(--p)/0.1);
+}
+.slot-btn.selected {
+  border-color: oklch(var(--p)); background: oklch(var(--p)/0.1); color: oklch(var(--p));
+  box-shadow: 0 2px 8px oklch(var(--p)/0.15);
+}
+.slot-btn[disabled] { opacity: 0.38; cursor: not-allowed; }
+.slot-btn .slot-time { font-size: 13px; font-weight: 700; }
+.slot-btn .slot-avail { font-size: 11px; color: oklch(var(--bc)/0.5); }
+
+/* ── Booking Step Progress ───────────────────────────────────────────── */
+.booking-step {
+  flex: 1; height: 4px; background: oklch(var(--b3));
+  border-radius: 99px; transition: background 0.3s, box-shadow 0.3s;
+}
+.booking-step.active { background: oklch(var(--p)); box-shadow: 0 0 6px oklch(var(--p)/0.3); }
+.booking-step.done   { background: oklch(var(--su)); }
+
+/* ── Booking Card (Riwayat) ─────────────────────────────────────────── */
+.booking-card {
+  background: oklch(var(--b1)); border: 1px solid oklch(var(--b3));
+  border-radius: 12px; padding: 1rem; transition: all 0.2s ease;
+}
+.booking-card:hover { 
+  box-shadow: 0 4px 16px oklch(var(--bc)/0.06); 
+  transform: translateY(-1px);
+}
+
+/* ── Announcement Entry ─────────────────────────────────────────────── */
+.ann-entry {
+  background: oklch(var(--b1)); border: 1px solid oklch(var(--b3));
+  border-left: 4px solid oklch(var(--wa)); border-radius: 10px;
+  padding: 12px 14px; animation: slide-in 0.2s ease;
+  transition: transform 0.15s;
+}
+.ann-entry:hover { transform: translateX(2px); }
+.ann-entry.service-specific { border-left-color: oklch(var(--p)); }
+
+/* ── Announcement Badge (sidebar) ────────────────────────────────────── */
+.ann-badge {
+  background: oklch(var(--er)); color: white; border-radius: 9999px;
+  font-size: 10px; font-weight: 700; padding: 1px 6px;
+  min-width: 18px; text-align: center;
+  animation: badge-pop 0.3s ease;
+}
+@keyframes badge-pop {
+  from { transform: scale(0); }
+  50%  { transform: scale(1.2); }
+  to   { transform: scale(1); }
+}
+
+/* ── Log entries ──────────────────────────────────────────────────────── */
+.log-entry {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 6px 10px; border-radius: 6px; background: oklch(var(--b2));
+  border-left: 3px solid transparent; font-size: 13px;
+  animation: slide-in 0.2s ease;
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.log-entry.type-queue    { border-left-color: oklch(var(--p)); }
+.log-entry.type-announce { border-left-color: oklch(var(--wa)); }
+.log-entry.type-admin    { border-left-color: oklch(var(--su)); }
+.log-entry.type-system   { border-left-color: oklch(var(--n)); }
+.log-entry.type-error    { border-left-color: oklch(var(--er)); background: oklch(var(--er)/0.1); }
+.log-time { font-size: 11px; color: oklch(var(--bc)/0.4); white-space: nowrap; min-width: 55px; }
+.log-text { flex: 1; line-height: 1.4; }
+
+/* ── Admin Sidebar Item ──────────────────────────────────────────────── */
+.admin-sidebar-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 8px; cursor: pointer;
+  transition: background 0.15s; color: oklch(var(--nc)/0.6);
+  font-size: 14px; font-weight: 500; background: transparent;
+  border: none; width: 100%; text-align: left;
+}
+.admin-sidebar-item:hover { background: oklch(var(--nc)/0.1); color: oklch(var(--nc)); }
+.admin-sidebar-item:focus-visible { outline: 2px solid oklch(var(--p)); outline-offset: -2px; }
+.admin-sidebar-item.active {
+  background: oklch(var(--p)/0.2); color: oklch(var(--p)); font-weight: 600;
+}
+
+/* ── Admin View ─────────────────────────────────────────────────────── */
+.admin-view { animation: view-enter 0.2s ease; }
+
+/* ── Service Queue Card (Admin dashboard) ───────────────────────────── */
+.service-queue-card {
+  background: oklch(var(--b1)); border: 1px solid oklch(var(--b3));
+  border-left: 4px solid oklch(var(--b3)); border-radius: 12px;
+  padding: 1rem; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.service-queue-card:hover { box-shadow: 0 4px 12px oklch(var(--bc)/0.05); }
+.service-queue-card.is-open   { border-left-color: oklch(var(--su)); }
+.service-queue-card.is-paused { border-left-color: oklch(var(--wa)); }
+.service-queue-card.is-closed { border-left-color: oklch(var(--er)); }
+
+/* ── Queue Card large number ─────────────────────────────────────────── */
+.queue-num-display {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 900; font-variant-numeric: tabular-nums;
+  letter-spacing: -2px; color: oklch(var(--p));
+  display: inline-block; transform-origin: center bottom; line-height: 1;
+}
+
+/* ── Stat Card ──────────────────────────────────────────────────────── */
+.stat-card {
+  background: oklch(var(--b1)); border: 1px solid oklch(var(--b3));
+  border-radius: 12px; padding: 1rem 1.25rem;
+  display: flex; flex-direction: column; gap: 4px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.stat-card:hover { 
+  transform: translateY(-2px); 
+  box-shadow: 0 4px 12px oklch(var(--bc)/0.06); 
+}
+.stat-card .stat-label {
+  font-size: 11px; color: oklch(var(--bc)/0.5);
+  text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+}
+.stat-card .stat-value { 
+  font-size: clamp(1.5rem, 3vw, 2rem); 
+  font-weight: 800; line-height: 1; color: oklch(var(--bc)); 
+}
+
+/* ── Sidebar service status badges ──────────────────────────────────── */
+.sidebar-svc-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.sidebar-svc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── YOUR_TURN toast ────────────────────────────────────────────────── */
+.toast-your-turn { position: fixed; top: 80px; right: -400px; z-index: 9999; min-width: 320px; }
+
+/* ── ApexCharts override ────────────────────────────────────────────── */
+.apexcharts-toolbar { display: none !important; }
+
+/* ── Bottom Nav Fix ──────────────────────────────────────────────────── */
+.btm-nav { padding-bottom: env(safe-area-inset-bottom, 0); }
+.btm-nav-item.active { color: oklch(var(--p)); font-weight: 600; }
+
+/* ── Mobile Responsive Fixes ─────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .stat-card .stat-value { font-size: 1.5rem; }
+  .queue-num-display { font-size: 2.5rem; }
+  .queue-number-big { font-size: 4rem; }
+  /* Ensure bottom nav doesn't overlap content */
+  main { padding-bottom: 70px !important; }
+}
+
+/* ── Focus & Accessibility ────────────────────────────────────────────── */
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 2px;
+}
+
+/* ── Card skeleton loading pulse ──────────────────────────────────────── */
+.skeleton { animation: skeleton-pulse 1.5s ease-in-out infinite; }
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.8; }
+}
+
+/* ── Dialog/Modal backdrop ────────────────────────────────────────────── */
+.modal-backdrop { backdrop-filter: blur(4px); }

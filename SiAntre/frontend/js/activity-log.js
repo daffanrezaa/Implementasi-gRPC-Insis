@@ -1,44 +1,57 @@
-const ActivityLog = {
-  container: null,
-  counter: null,
-  count: 0,
-  maxLogs: 50,
+(function() {
+  const MAX_LOG = 100;
+  let logEl = null;
 
-  init() {
-    this.container = document.getElementById('activity-log');
-    this.counter   = document.getElementById('log-count');
-    
-    // Clear initial "Waiting for connection" text when connected
-    EventBus.on('wsConnected', () => {
-      if (this.container && this.count === 0) {
-        this.container.innerHTML = '';
-      }
+  function fmt(iso) {
+    return new Date(iso || Date.now()).toLocaleTimeString('id-ID', {
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
     });
+  }
 
-    EventBus.on('activityLog', (log) => this.addLog(log.type, log.message, log.timestamp));
-  },
+  function esc(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
 
-  addLog(type, message, timestamp = new Date().toISOString()) {
-    if (!this.container) return;
+  function appendLog({ type, message, timestamp }) {
+    if (!logEl) logEl = document.getElementById('activity-log') || document.getElementById('monitor-event-log');
+    if (!logEl) return;
 
-    if (this.count === 0) this.container.innerHTML = ''; // clear waiting msg
+    // Remove empty state placeholder
+    const empty = logEl.querySelector('.log-empty') || logEl.querySelector('.italic');
+    if (empty) empty.remove();
 
-    const timeStr = new Date(timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second:'2-digit' });
-    
-    const p = document.createElement('p');
-    p.className = `log-${type}`;
-    p.innerHTML = `<span class="opacity-40 mr-2">[${timeStr}]</span> ${message}`;
-    
-    this.container.prepend(p);
-    
-    this.count++;
-    if (this.counter) this.counter.innerText = this.count;
+    const entry = document.createElement('div');
+    entry.className = `log-entry type-${type || 'system'}`;
+    entry.innerHTML = `
+      <span class="log-time">${fmt(timestamp)}</span>
+      <span class="log-text">${esc(message)}</span>
+    `;
 
-    // Prune old logs
-    while (this.container.children.length > this.maxLogs) {
-      this.container.removeChild(this.container.lastChild);
+    logEl.insertBefore(entry, logEl.firstChild);
+
+    // Prune old entries
+    while (logEl.children.length > MAX_LOG) {
+      logEl.removeChild(logEl.lastChild);
     }
   }
-};
 
-document.addEventListener('DOMContentLoaded', () => ActivityLog.init());
+  // Clear log
+  const clearBtn = document.getElementById('btn-clear-log');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (!logEl) return;
+      logEl.innerHTML = '<p class="log-empty text-base-content/40 italic text-center py-4 text-sm">Log dibersihkan.</p>';
+    });
+  }
+
+  // Listen to EventBus
+  EventBus.on('activityLog', (data) => appendLog(data));
+
+  // Also listen for connection events
+  EventBus.on('wsConnected', () => appendLog({ type: 'system', message: '📡 Terhubung ke Gateway.' }));
+  EventBus.on('wsDisconnected', (e) => appendLog({ type: 'error', message: `❌ Terputus: ${e.reason || 'Koneksi hilang'}` }));
+
+})();

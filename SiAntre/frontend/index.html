@@ -1,123 +1,211 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="dark">
+<html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="SiAntre — Sistem Antrian Layanan Publik Digital SAMSAT" />
-  <title>SiAntre — Antrian SAMSAT</title>
+  <title>SiAntre — Sistem Antrian Digital SAMSAT</title>
 
-  <!-- DaisyUI + Tailwind CDN -->
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"
+          integrity="sha512-aNMyYYxdIxIaot0Y1/PLuEu3eipGCmsEUBrUq+7aVyPGMFH8z0eTP0tkqAvv34fzN6z+201d3T8HPb1svWSKHQ=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-  <!-- ApexCharts -->
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-
-  <!-- anime.js -->
-  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
-
-  <!-- Custom styles -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
 </head>
-<body class="min-h-screen bg-base-200">
+<body class="bg-base-200 min-h-screen font-[Plus_Jakarta_Sans]">
 
-  <!-- ── Navbar ─────────────────────────────────────────────── -->
-  <nav class="navbar bg-base-100 shadow-lg sticky top-0 z-50">
-    <div class="flex-1">
-      <a class="btn btn-ghost text-xl font-bold">
-        <span class="text-primary">Si</span>Antre
-      </a>
-      <span class="badge badge-outline badge-sm ml-2">SAMSAT Digital</span>
-    </div>
-    <div class="flex-none gap-2">
-      <div id="ws-status-badge" class="badge badge-warning gap-1">
-        <span class="loading loading-ring loading-xs"></span> Menghubungkan...
+  <!-- NAVBAR -->
+  <nav class="navbar bg-neutral text-neutral-content sticky top-0 z-50 shadow-lg px-4">
+    <div class="navbar-start gap-3">
+      <div class="avatar placeholder">
+        <div class="bg-primary text-primary-content rounded-xl w-10">
+          <span class="text-xl font-black">S</span>
+        </div>
       </div>
+      <div>
+        <p class="font-bold text-lg leading-tight tracking-tight">SiAntre</p>
+        <p class="text-xs text-neutral-content/50">Antrian Digital SAMSAT</p>
+      </div>
+    </div>
+    <div class="navbar-end gap-3">
+      <a href="/admin.html" class="btn btn-ghost btn-xs text-neutral-content/60">Panel Petugas →</a>
+      <span id="ws-status-badge" class="badge badge-warning gap-1">
+        <span class="loading loading-ring loading-xs"></span>
+        Menghubungkan...
+      </span>
     </div>
   </nav>
 
-  <!-- ── Main Content ───────────────────────────────────────── -->
-  <main class="container mx-auto p-4 max-w-7xl">
-
-    <!-- Alert untuk notifikasi YOUR_TURN -->
-    <div id="your-turn-banner" class="alert alert-success shadow-lg mb-4 hidden">
-      <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-      <div>
-        <h3 class="font-bold">🎉 Giliran Anda!</h3>
-        <div class="text-xs">Segera menuju loket yang tersedia.</div>
-      </div>
-    </div>
-
-    <!-- Grid: 3 komponen event-driven -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-
-      <!-- 1. Nomor Antrian Saat Ini -->
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body items-center text-center">
-          <h2 class="card-title text-sm uppercase tracking-wider opacity-70">Nomor Dilayani</h2>
-          <div id="current-number-display" class="text-6xl font-bold text-primary tabular-nums">
-            0
-          </div>
-          <p id="total-waiting-display" class="text-sm opacity-60">Menunggu: —</p>
-        </div>
-      </div>
-
-      <!-- 2. Grafik Antrian (ApexCharts) -->
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title text-sm uppercase tracking-wider opacity-70">Grafik Antrian</h2>
-          <div id="queue-chart" class="w-full h-48"></div>
-        </div>
-      </div>
-
-      <!-- 3. Status Layanan -->
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title text-sm uppercase tracking-wider opacity-70">Status Layanan</h2>
-          <div id="services-status-list" class="space-y-2">
-            <div class="flex items-center gap-2 text-sm opacity-50">
-              <span class="loading loading-spinner loading-xs"></span> Memuat...
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Activity Log -->
-    <div class="card bg-base-100 shadow-xl mb-6">
-      <div class="card-body">
-        <h2 class="card-title text-sm uppercase tracking-wider opacity-70">
-          📋 Log Aktivitas
-          <span id="log-count" class="badge badge-sm badge-ghost">0</span>
-        </h2>
-        <div id="activity-log" class="max-h-48 overflow-y-auto space-y-1 text-sm font-mono">
-          <p class="opacity-40">Menunggu koneksi...</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Panel Warga (Login/Booking) — Person B akan detail -->
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2 class="card-title">🧑 Panel Warga</h2>
-        <p class="text-sm opacity-60">Login untuk booking antrian atau cek status booking Anda.</p>
-        <div class="card-actions justify-end mt-4">
-          <button id="btn-login-citizen" class="btn btn-primary btn-sm">Masuk</button>
-          <button id="btn-register-citizen" class="btn btn-outline btn-sm">Daftar</button>
-        </div>
-      </div>
-    </div>
-
-  </main>
-
   <!-- Toast container -->
-  <div id="toast-container" class="toast toast-end toast-bottom z-50"></div>
+  <div id="toast-container" class="toast toast-top toast-end z-[999]"></div>
 
-  <!-- Scripts -->
+  <!-- Main layout -->
+  <div class="min-h-[calc(100vh-64px)] grid grid-cols-1 lg:grid-cols-2">
+
+    <!-- KIRI: Hero + Informasi Layanan -->
+    <div class="bg-gradient-to-br from-primary/10 via-base-100 to-secondary/5 p-8 lg:p-12 flex flex-col justify-between">
+      <div>
+        <div class="badge badge-primary badge-outline mb-4">SAMSAT Digital</div>
+        <h1 class="text-4xl lg:text-5xl font-black text-base-content leading-tight mb-4">
+          Antri Cerdas,<br>
+          <span class="text-primary">Layani Lebih</span><br>
+          Cepat.
+        </h1>
+        <p class="text-base-content/60 text-lg mb-8 max-w-md">
+          Sistem antrian digital untuk Pembayaran Pajak Kendaraan,
+          Perpanjangan STNK, dan Pembuatan STNK baru.
+        </p>
+        <!-- Service Status Mini Cards -->
+        <div id="service-status-mini" class="flex flex-col gap-3">
+          <div class="bg-base-100/30 p-4 rounded-2xl border border-base-content/5 flex justify-between items-center animate-pulse">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-base-300 rounded-lg"></div>
+              <div class="space-y-2">
+                <div class="h-3 w-24 bg-base-300 rounded"></div>
+                <div class="h-2 w-16 bg-base-300 rounded"></div>
+              </div>
+            </div>
+            <div class="h-5 w-12 bg-base-300 rounded-full"></div>
+          </div>
+          <div class="bg-base-100/30 p-4 rounded-2xl border border-base-content/5 flex justify-between items-center animate-pulse" style="animation-delay: 0.2s">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-base-300 rounded-lg"></div>
+              <div class="space-y-2">
+                <div class="h-3 w-20 bg-base-300 rounded"></div>
+                <div class="h-2 w-12 bg-base-300 rounded"></div>
+              </div>
+            </div>
+            <div class="h-5 w-12 bg-base-300 rounded-full"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Announcement Banner (hidden by default) -->
+      <div id="ann-banner" class="hidden mt-6">
+        <div class="alert alert-warning shadow-md">
+          <span>📢</span>
+          <div>
+            <p class="font-semibold text-sm" id="ann-banner-title">Pengumuman</p>
+            <p class="text-xs" id="ann-banner-text"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KANAN: Form Auth -->
+    <div class="flex items-center justify-center p-8 lg:p-12">
+      <div class="w-full max-w-md">
+
+        <!-- Auth Card -->
+        <div class="card bg-base-100 shadow-xl" id="auth-card">
+          <div class="card-body">
+            <!-- Tab switcher -->
+            <div role="tablist" class="tabs tabs-boxed mb-4" id="auth-tabs">
+              <button role="tab" class="tab tab-active" data-auth-tab="login">
+                Masuk
+              </button>
+              <button role="tab" class="tab" data-auth-tab="register">
+                Daftar
+              </button>
+            </div>
+
+            <!-- Tab: Login -->
+            <div id="auth-tab-login" class="auth-tab-content">
+              <p class="text-sm text-base-content/60 mb-4">
+                Masukkan NIK 16 digit untuk mengakses sistem antrian.
+              </p>
+              <label class="form-control w-full mb-4">
+                <div class="label">
+                  <span class="label-text font-semibold text-xs uppercase tracking-wide">
+                    NIK (16 digit)
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  id="login-nik"
+                  inputmode="numeric"
+                  maxlength="16"
+                  placeholder="3201xxxxxxxxxx"
+                  class="input input-bordered w-full font-mono text-lg tracking-widest"
+                  autocomplete="off"
+                />
+                <div class="label">
+                  <span class="label-text-alt text-error hidden" id="login-nik-error"></span>
+                  <span class="label-text-alt text-base-content/40" id="login-nik-counter">0/16</span>
+                </div>
+              </label>
+              <button
+                class="btn btn-primary w-full"
+                id="btn-login"
+                data-original-text="Masuk ke SiAntre"
+              >
+                Masuk ke SiAntre
+              </button>
+            </div>
+
+            <!-- Tab: Register -->
+            <div id="auth-tab-register" class="auth-tab-content hidden">
+              <p class="text-sm text-base-content/60 mb-4">
+                Daftarkan NIK Anda untuk mendapat akses sistem antrian.
+              </p>
+              <div class="flex flex-col gap-3">
+                <label class="form-control w-full">
+                  <div class="label">
+                    <span class="label-text font-semibold text-xs uppercase">NIK</span>
+                  </div>
+                  <input type="text" id="reg-nik" inputmode="numeric" maxlength="16"
+                    placeholder="3201xxxxxxxxxx"
+                    class="input input-bordered w-full font-mono tracking-widest" />
+                </label>
+                <label class="form-control w-full">
+                  <div class="label">
+                    <span class="label-text font-semibold text-xs uppercase">Nama Lengkap</span>
+                  </div>
+                  <input type="text" id="reg-name" placeholder="Sesuai KTP"
+                    class="input input-bordered w-full" />
+                </label>
+                <label class="form-control w-full">
+                  <div class="label">
+                    <span class="label-text font-semibold text-xs uppercase">Nomor HP</span>
+                  </div>
+                  <input type="tel" id="reg-phone" placeholder="08xxxxxxxxxx"
+                    class="input input-bordered w-full" />
+                </label>
+                <label class="form-control w-full">
+                  <div class="label">
+                    <span class="label-text font-semibold text-xs uppercase">Alamat</span>
+                  </div>
+                  <input type="text" id="reg-address" placeholder="Alamat sesuai KTP"
+                    class="input input-bordered w-full" />
+                </label>
+                <button class="btn btn-primary w-full mt-1" id="btn-register"
+                  data-original-text="Daftar Akun">
+                  Daftar Akun
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="mt-4 text-center text-xs text-base-content/40">
+          Data Anda aman dan hanya digunakan untuk keperluan antrian.
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Script loading -->
   <script src="js/ws-client.js"></script>
-  <script src="js/chart.js"></script>
-  <script src="js/activity-log.js"></script>
   <script src="js/notification.js"></script>
+  <script src="js/activity-log.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/status-indicator.js"></script>
   <script src="js/warga.js"></script>
 </body>
 </html>

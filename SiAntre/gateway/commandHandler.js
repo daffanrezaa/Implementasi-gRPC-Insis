@@ -232,18 +232,21 @@ function handleCommand(message, ws, clients) {
       break;
 
     case 'WALK_IN_CITIZEN':
+      payload.officer_id = getClientState(ws)?.officerId || '';
       clients.admin.WalkInCitizen(payload, (err, res) => {
         sendToClient(ws, { type: 'WALK_IN_RESULT', error: err?.message, payload: res });
       });
       break;
 
     case 'CHECKIN_CITIZEN':
+      payload.officer_id = getClientState(ws)?.officerId || '';
       clients.admin.CheckInCitizen(payload, (err, res) => {
         sendToClient(ws, { type: 'CHECKIN_RESULT', error: err?.message, payload: res });
       });
       break;
 
     case 'RESET_DAILY_QUOTA':
+      payload.officer_id = getClientState(ws)?.officerId || '';
       clients.admin.ResetDailyQuota(payload, (err, res) => {
         sendToClient(ws, { type: 'RESET_QUOTA_RESULT', error: err?.message, payload: res });
       });
@@ -297,17 +300,12 @@ function handleCommand(message, ws, clients) {
       });
       break;
 
-    case 'PAUSE_SERVICE':
+    case 'PAUSE':
+    case 'RESUME':
       sendAdminCommand(ws, {
-        command_type: 'PAUSE',
+        command_type: cmd,
         service_id:   payload.service_id,
-      });
-      break;
-
-    case 'RESUME_SERVICE':
-      sendAdminCommand(ws, {
-        command_type: 'RESUME',
-        service_id:   payload.service_id,
+        officer_id:   getClientState(ws)?.officerId || '',
       });
       break;
 

@@ -2,14 +2,26 @@
 const AppState = {
   ws:                   null,
   isConnected:          false,
-  currentUser:          null,   // { nik, name, citizen_id }
-  currentAdmin:         null,   // { id_pegawai, nama, role }
+  currentUser:          null,   // { nik, nama, citizen_id, no_hp, alamat }
+  currentAdmin:         null,   // { id_pegawai, nama, role, jabatan }
+  _reqPin:              null,   // BUG-H1 FIX: store admin PIN in memory, not form
   services:             [],
   myBooking:            null,
   queueData:            {},
   reconnectAttempts:    0,
   maxReconnectAttempts: 10,
   pauseReconnect:       false,
+
+  // === WARGA ===
+  allBookings:          [],     // BUG-M6 FIX: initialized to [] to prevent undefined errors
+  selectedService:      null,
+  selectedSlot:         null,
+  monitorServiceId:     null,
+  unreadAnnouncements:  0,
+
+  // === ADMIN ===
+  queueSnapshots:       {},
+  statsSnapshot:        null,
 };
 
 // ─── Event Bus ────────────────────────────────────────────────────────────────
@@ -170,17 +182,32 @@ function formatQueueEvent(payload) {
 
 // ─── Update Badge Koneksi ──────────────────────────────────────────────────────
 function updateConnectionStatus(status) {
-  const badge = document.getElementById('ws-status-badge');
-  if (!badge) return;
   const configs = {
-    connected:    { text: '● Terhubung',    class: 'badge badge-success' },
-    disconnected: { text: '● Terputus',     class: 'badge badge-error' },
-    connecting:   { text: '<span class="loading loading-ring loading-xs"></span> Menghubungkan...', class: 'badge badge-warning gap-1' },
+    connected:    { text: '● Terhubung',    class: 'badge badge-success badge-sm' },
+    disconnected: { text: '● Terputus',     class: 'badge badge-error badge-sm' },
+    connecting:   { text: '<span class="loading loading-ring loading-xs"></span> Menghubungkan...', class: 'badge badge-warning gap-1 badge-sm' },
   };
   const cfg = configs[status] || configs.connecting;
-  badge.className = cfg.class;
-  badge.innerHTML = cfg.text;
+  // Update all WS badges on the page
+  document.querySelectorAll('[id^="ws-status-badge"]').forEach(badge => {
+    badge.className = cfg.class;
+    badge.innerHTML = cfg.text;
+  });
 }
+
+// ─── Global Helper: setLoading ────────────────────────────────────────────────
+window.setLoading = function(btnId, loading) {
+  const btn = typeof btnId === 'string' ? document.getElementById(btnId) : btnId;
+  if (!btn) return;
+  if (loading) {
+    btn.dataset.originalText = btn.dataset.originalText || btn.innerHTML;
+    btn.disabled  = true;
+    btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Memproses...';
+  } else {
+    btn.disabled  = false;
+    btn.innerHTML = btn.dataset.originalText || btn.innerHTML;
+  }
+};
 
 // ─── Inisialisasi WebSocket ───────────────────────────────────────────────────
 function initWebSocket() {
@@ -196,7 +223,7 @@ function initWebSocket() {
     AppState.isConnected       = true;
     AppState.reconnectAttempts = 0;
     updateConnectionStatus('connected');
-    EventBus.emit('wsConnected', {});
+    // Note: wsConnected event is emitted when server sends CONNECTED message (routeMessage)
     console.log('[WsClient] Koneksi dibuka.');
   });
 
