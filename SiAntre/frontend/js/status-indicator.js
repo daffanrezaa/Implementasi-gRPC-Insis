@@ -1,4 +1,5 @@
 (function() {
+  'use strict';
   function getStatusBadgeClass(svc) {
     const st = svc.status || (svc.is_open ? 'OPEN' : 'CLOSED');
     if (st === 'OPEN')   return 'badge badge-success';
@@ -25,7 +26,7 @@
         <div class="sidebar-svc-row flex items-center justify-between gap-2 px-1">
           <div class="flex items-center gap-2 overflow-hidden">
             <span class="sidebar-svc-dot ${dotClass} animate-pulse"></span>
-            <span class="text-xs truncate font-medium">${svc.short_code || svc.service_id}</span>
+            <span class="text-xs truncate font-medium">${window.esc(svc.short_code || svc.service_id)}</span>
           </div>
           <span class="text-[10px] opacity-40 font-mono">${svc.quota_remaining ?? 0}</span>
         </div>
@@ -40,15 +41,15 @@
     container.innerHTML = services.map(svc => `
       <div class="flex items-center justify-between bg-base-100/50 p-3 rounded-xl border border-base-content/5">
         <div class="flex items-center gap-3">
-          <span class="text-xl font-black text-primary">${svc.short_code}</span>
+          <span class="text-xl font-black text-primary">${window.esc(svc.short_code || '—')}</span>
           <div>
-            <p class="text-xs font-bold leading-tight">${svc.name}</p>
-            <p class="text-[10px] opacity-50">${svc.open_hour} - ${svc.close_hour}</p>
+            <p class="text-xs font-bold leading-tight">${window.esc(svc.name || 'Layanan')}</p>
+            <p class="text-[10px] opacity-50">${window.esc(svc.open_hour || '08:00')} - ${window.esc(svc.close_hour || '15:00')}</p>
           </div>
         </div>
         <div class="text-right">
           <span class="${getStatusBadgeClass(svc)} badge-xs mb-1">${getStatusText(svc)}</span>
-          <p class="text-[10px] opacity-50">Sisa: ${svc.quota_remaining} Kuota</p>
+          <p class="text-[10px] opacity-50">Sisa: ${svc.quota_remaining ?? 0} Kuota</p>
         </div>
       </div>
     `).join('');

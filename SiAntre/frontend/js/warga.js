@@ -1,4 +1,5 @@
 (function() {
+  'use strict';
   // ── VIEW ROUTING ───────────────────────────────────────────────────
   const PAGE_TITLES = {
     booking:     'Booking Baru',
@@ -96,15 +97,20 @@
     });
   }
 
-  // NIK character counter
+  // NIK character counter & Digit validation
   document.getElementById('login-nik')?.addEventListener('input', (e) => {
+    // LOW-3 FIX: Only allow digits
+    e.target.value = e.target.value.replace(/\D/g, '');
     const counter = document.getElementById('login-nik-counter');
     if (counter) counter.textContent = `${e.target.value.length}/16`;
   });
 
   document.getElementById('btn-login')?.addEventListener('click', () => {
     const nik = document.getElementById('login-nik').value;
-    if (nik.length !== 16) return showNotification('NIK Tidak Valid', 'NIK harus 16 digit.', 'warning');
+    // LOW-3 FIX: Consistently validate digit regex
+    if (nik.length !== 16 || !/^\d+$/.test(nik)) {
+      return showNotification('NIK Tidak Valid', 'NIK harus 16 digit angka.', 'warning');
+    }
     setLoading('btn-login', true);
     sendCommand('LOGIN_CITIZEN', { nik });
   });
@@ -113,7 +119,11 @@
     setLoading('btn-login', false);
     if (msg.error) return showNotification('Login Gagal', msg.error, 'error');
     sessionStorage.setItem('siantre_user', JSON.stringify(msg.payload));
-    window.location.href = 'warga.html';
+    
+    // Fix redirect loop: only redirect if not on warga.html
+    if (!window.location.pathname.endsWith('warga.html')) {
+      window.location.href = 'warga.html';
+    }
   });
 
   // BUG-C1 FIX: Restore missing event listener wrapper
@@ -397,6 +407,10 @@
     if (!container) return;
     const bookings = msg.payload?.bookings || [];
     AppState.allBookings = bookings; 
+    
+    // KRIT-1 FIX: Set myBooking to active one for YOUR_TURN detection
+    AppState.myBooking = bookings.find(b => b.status === 'ARRIVED' || b.status === 'CALLED') || null;
+    
     if (!bookings.length) {
       container.innerHTML = `
         <div class="flex flex-col items-center justify-center py-12 opacity-30">
@@ -524,9 +538,13 @@
       const opt = new Option(`${s.short_code} - ${s.name}`, s.service_id);
       sel.add(opt);
     });
-    if (currentVal) sel.value = currentVal;
+    if (currentVal) {
+      sel.value = currentVal;
+      // MED-1 FIX: Trigger queue status refresh for restored value
+      sendCommand('GET_QUEUE_STATUS', { service_id: currentVal });
+    }
 
-    sel.onchange = (e) => {
+    sel.addEventListener('change', (e) => {
       const sid = e.target.value;
       if (!sid) {
         document.getElementById('monitor-service-label').textContent = 'Pilih layanan untuk memulai';
@@ -538,7 +556,7 @@
       const svc = AppState.services.find(s => s.service_id === sid);
       if (svc) document.getElementById('monitor-service-label').textContent = svc.name;
       sendCommand('GET_QUEUE_STATUS', { service_id: sid });
-    };
+    });
   }
 
   EventBus.on('queueStatus', (msg) => {
@@ -625,7 +643,7 @@
     list.innerHTML = [...anns].reverse().map(a => `
       <div class="ann-entry">
         <p class="text-[10px] opacity-40 font-bold mb-1">${new Date(a.timestamp).toLocaleString()}</p>
-        <p class="text-sm font-medium">${a.message}</p>
+        <p class="text-sm font-medium">${window.esc(a.message)}</p>
       </div>
     `).join('');
   });
@@ -635,13 +653,22 @@
     const overlay = document.getElementById('mobile-sidebar-overlay');
     const sidebar = document.getElementById('mobile-sidebar');
     overlay.classList.remove('hidden');
-    // Clone if empty
+    
+    // MED-5 FIX: Always sync badges if already cloned, or clone if empty
     if (!sidebar.innerHTML) {
       sidebar.innerHTML = document.getElementById('sidebar').innerHTML;
       sidebar.querySelectorAll('[data-view]').forEach(btn => {
         btn.addEventListener('click', () => showView(btn.dataset.view));
       });
       sidebar.querySelector('#btn-logout-warga').onclick = () => document.getElementById('btn-logout-warga').click();
+    } else {
+      // Sync badges to mobile sidebar
+      const badge = document.getElementById('ann-badge-count');
+      const mobileBadge = sidebar.querySelector('#ann-badge-count');
+      if (badge && mobileBadge) {
+        mobileBadge.textContent = badge.textContent;
+        mobileBadge.classList.toggle('hidden', badge.classList.contains('hidden'));
+      }
     }
     anime({ targets: sidebar, translateX: ['-100%', '0%'], duration: 300, easing: 'easeOutQuart' });
   });

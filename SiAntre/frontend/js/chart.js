@@ -1,4 +1,5 @@
 (function () {
+  'use strict';
   let chart = null;
   let adminChart = null;
 
@@ -24,7 +25,8 @@
       categories: [],
       labels: { style: { fontSize: '11px', fontWeight: 600 } }
     },
-    colors: ['oklch(var(--p))', 'oklch(var(--s)/0.3)'],
+    // HIGH-2 FIX: ApexCharts does not support oklch() CSS functions
+    colors: ['#570df8', '#fbbd23'], 
     tooltip: { theme: 'light' }
   };
 
@@ -104,11 +106,11 @@
       if (tableBody) {
         tableBody.innerHTML = stats.per_service.map(s => `
           <tr>
-            <td class="font-bold text-xs">${s.service_name}</td>
+            <td class="font-bold text-xs">${window.esc(s.service_name)}</td>
             <td>${s.quota_total}</td>
             <td>${s.quota_used}</td>
             <td class="text-warning font-bold">${s.waiting_count}</td>
-            <td class="font-mono">${s.current_number || '—'}</td>
+            <td class="font-mono">${window.esc(s.current_number) || '—'}</td>
             <td><span class="badge badge-xs ${s.is_open ? 'badge-success' : 'badge-ghost'}">${s.is_open ? 'BUKA' : 'TUTUP'}</span></td>
           </tr>
         `).join('');

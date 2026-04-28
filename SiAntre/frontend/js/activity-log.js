@@ -1,4 +1,5 @@
 (function() {
+  'use strict';
   const MAX_LOG = 100;
   let logEl = null;
 
@@ -27,7 +28,7 @@
     entry.className = `log-entry type-${type || 'system'}`;
     entry.innerHTML = `
       <span class="log-time">${fmt(timestamp)}</span>
-      <span class="log-text">${esc(message)}</span>
+      <span class="log-text">${window.esc(message)}</span>
     `;
 
     logEl.insertBefore(entry, logEl.firstChild);
@@ -42,6 +43,8 @@
   const clearBtn = document.getElementById('btn-clear-log');
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
+      // MED-3 FIX: Initialize logEl if null
+      if (!logEl) logEl = document.getElementById('activity-log') || document.getElementById('monitor-event-log');
       if (!logEl) return;
       logEl.innerHTML = '<p class="log-empty text-base-content/40 italic text-center py-4 text-sm">Log dibersihkan.</p>';
     });

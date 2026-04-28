@@ -1,6 +1,9 @@
-// ─── Web Audio API: Sound Notification ───────────────────────────────────────
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
-let _audioCtx  = null;
+(function() {
+  'use strict';
+
+  // ─── Web Audio API: Sound Notification ───────────────────────────────────────
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let _audioCtx  = null;
 
 function playChime(type = 'info') {
   try {
@@ -52,8 +55,8 @@ function showNotification(title, message, type = 'info', duration = 4000) {
   toast.className = `alert ${alertClass} shadow-lg mb-2 min-w-[300px] pointer-events-auto`;
   toast.innerHTML = `
     <div>
-      <p class="font-bold text-sm">${title}</p>
-      <p class="text-xs opacity-90">${message}</p>
+      <p class="font-bold text-sm">${window.esc(title)}</p>
+      <p class="text-xs opacity-90">${window.esc(message)}</p>
     </div>
   `;
 
@@ -91,20 +94,20 @@ function showYourTurnBanner(serviceName, number) {
   const banner = document.createElement('div');
   banner.id = 'your-turn-banner';
   banner.className = 'fixed top-20 right-4 z-[9999] w-80';
-  banner.innerHTML = `
-    <div class="card bg-primary text-primary-content shadow-2xl border-2 border-white/20 overflow-hidden">
-      <div class="card-body p-4 items-center text-center">
-        <h2 class="card-title text-xl font-black italic">GILIRAN ANDA! 🔔</h2>
-        <p class="text-xs opacity-80 uppercase tracking-widest font-bold">${serviceName}</p>
-        <div class="text-5xl font-black my-2 tracking-tighter">${number}</div>
-        <p class="text-sm">Silakan menuju loket sekarang.</p>
-        <div class="card-actions w-full mt-4">
-          <button class="btn btn-sm btn-block btn-ghost bg-white/20" onclick="this.closest('#your-turn-banner').remove()">SAYA MENGERTI</button>
+    banner.innerHTML = `
+      <div class="card bg-primary text-primary-content shadow-2xl border-2 border-white/20 overflow-hidden">
+        <div class="card-body p-4 items-center text-center">
+          <h2 class="card-title text-xl font-black italic">GILIRAN ANDA! 🔔</h2>
+          <p class="text-xs opacity-80 uppercase tracking-widest font-bold">${window.esc(serviceName)}</p>
+          <div class="text-5xl font-black my-2 tracking-tighter">${window.esc(number)}</div>
+          <p class="text-sm">Silakan menuju loket sekarang.</p>
+          <div class="card-actions w-full mt-4">
+            <button class="btn btn-sm btn-block btn-ghost bg-white/20" onclick="this.closest('#your-turn-banner').remove()">SAYA MENGERTI</button>
+          </div>
         </div>
+        <div id="turn-progress" class="h-1 bg-white/40 w-full"></div>
       </div>
-      <div id="turn-progress" class="h-1 bg-white/40 w-full"></div>
-    </div>
-  `;
+    `;
 
   document.body.appendChild(banner);
   playChime('turn');
@@ -143,6 +146,8 @@ EventBus.on('yourTurn', (msg) => {
   showYourTurnBanner(p.service_name || msg.service_id, p.current_number);
 });
 
-// Globalize
-window.showNotification = showNotification;
-window.showYourTurnBanner = showYourTurnBanner;
+  // Globalize
+  window.showNotification = showNotification;
+  window.showYourTurnBanner = showYourTurnBanner;
+
+})();

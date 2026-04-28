@@ -1,4 +1,5 @@
 (function() {
+  'use strict';
   const ADMIN_PAGE_TITLES = {
     dashboard:  'Dashboard Live',
     kedatangan: 'Manajemen Kedatangan',
@@ -101,15 +102,26 @@
     document.getElementById('admin-sidebar-id').textContent   = AppState.currentAdmin.id_pegawai;
 
     const isAdmin = AppState.currentAdmin.role === 'ADMIN';
+    
+    // Admin only sees officer management, Officers see everything else
     document.getElementById('admin-only-menu').classList.toggle('hidden', !isAdmin);
     document.getElementById('petugas-menu').classList.toggle('hidden', isAdmin);
 
-    if (isAdmin) {
-      showAdminView('petugas');
-    } else {
-      sendCommand('LIST_SERVICES');
-      showAdminView('dashboard');
+    // KRIT-3 FIX: Always load services for both roles
+    sendCommand('LIST_SERVICES');
+    
+    // Default view based on role (only if logging in from the login screen)
+    const isFirstLogin = !document.getElementById('admin-login-wrapper').classList.contains('hidden');
+    if (isFirstLogin) {
+      if (isAdmin) {
+        showAdminView('petugas');
+      } else {
+        showAdminView('dashboard');
+      }
     }
+    
+    document.getElementById('admin-login-wrapper').classList.add('hidden');
+    document.getElementById('admin-dashboard').classList.remove('hidden');
   });
 
   document.getElementById('btn-admin-logout')?.addEventListener('click', () => {
@@ -125,23 +137,23 @@
       <div class="service-queue-card" id="qcard-${s.service_id}">
         <div class="flex justify-between items-start mb-2">
           <div>
-            <p class="font-black text-primary text-lg">${s.short_code}</p>
-            <p class="text-xs font-bold">${s.name}</p>
+            <p class="font-black text-primary text-lg">${window.esc(s.short_code)}</p>
+            <p class="text-xs font-bold">${window.esc(s.name)}</p>
           </div>
           <span class="badge badge-xs">${s.is_open ? 'BUKA' : 'TUTUP'}</span>
         </div>
         <div class="text-center py-4">
           <p class="text-[10px] opacity-40 uppercase font-bold">Dilayani</p>
-          <div class="queue-num-display text-4xl font-black text-primary" id="qnum-${s.service_id}">${s.current_number || '—'}</div>
+          <div class="queue-num-display text-4xl font-black text-primary" id="qnum-${s.service_id}">${window.esc(s.current_number) || '—'}</div>
         </div>
         <div class="flex justify-between text-[10px] font-bold opacity-60 mb-4">
           <span>Menunggu: <span class="text-warning" id="qwait-${s.service_id}">${s.waiting_count || 0}</span></span>
           <span>Sisa: <span id="qquota-${s.service_id}">${s.quota_remaining}</span></span>
         </div>
         <div class="flex flex-col gap-2">
-          <button class="btn btn-primary btn-sm btn-next" data-id="${s.service_id}">Panggil Berikutnya</button>
+          <button class="btn btn-primary btn-sm btn-next" data-id="${window.esc(s.service_id)}">Panggil Berikutnya</button>
           <div class="flex gap-2">
-            <button class="btn btn-xs flex-1 ${s.is_open ? 'btn-warning' : 'btn-success'} btn-toggle-svc" data-id="${s.service_id}" data-open="${s.is_open}">
+            <button class="btn btn-xs flex-1 ${s.is_open ? 'btn-warning' : 'btn-success'} btn-toggle-svc" data-id="${window.esc(s.service_id)}" data-open="${s.is_open}">
               ${s.is_open ? 'Jeda' : 'Buka'}
             </button>
           </div>
@@ -236,17 +248,22 @@
   });
 
   // ── ANNOUNCE & RESET ────────────────────────────────────────────────
+  // KRIT-4 FIX: Scoped ACK handler
+  let _pendingAnnounce = false;
   document.getElementById('btn-announce')?.addEventListener('click', () => {
     const data = {
       service_id: document.getElementById('adm-announce-service').value || null,
       message:    document.getElementById('adm-announce-msg').value
     };
+    if (!data.message.trim()) return showNotification('Pesan Kosong', 'Masukkan isi pengumuman.', 'warning');
+    _pendingAnnounce = true;
     setLoading('btn-announce', true);
     sendCommand('ANNOUNCE', data);
   });
 
   EventBus.on('adminEvent', (ev) => {
-    if (ev.event_type === 'ACK') {
+    if (ev.event_type === 'ACK' && _pendingAnnounce) {
+      _pendingAnnounce = false;
       setLoading('btn-announce', false);
       showNotification('Terkirim', 'Pengumuman telah disebarkan.', 'success');
       document.getElementById('adm-announce-msg').value = '';
@@ -327,9 +344,12 @@
   });
 
   document.getElementById('btn-add-officer')?.addEventListener('click', () => {
+    // HIGH-1 FIX: Use AppState._reqPin
+    const requesterPin = AppState._reqPin || document.getElementById('officer-req-pin').value.trim();
+    
     const data = {
       requester_id:  AppState.currentAdmin.id_pegawai,
-      requester_pin: document.getElementById('officer-req-pin').value.trim(),
+      requester_pin: requesterPin,
       id_pegawai:    document.getElementById('new-officer-id').value.toUpperCase().trim(),
       nama:          document.getElementById('new-officer-nama').value.trim(),
       jabatan:       document.getElementById('new-officer-jabatan').value.trim(),
@@ -337,8 +357,7 @@
       pin:           document.getElementById('new-officer-pin').value.trim()
     };
     
-    // VALIDATION FIX: Officer management
-    if (!data.requester_pin) return showNotification('Konfirmasi PIN', 'Masukkan PIN Anda untuk konfirmasi.', 'warning');
+    if (!data.requester_pin) return showNotification('Konfirmasi PIN', 'PIN admin diperlukan.', 'warning');
     if (data.id_pegawai.length < 2) return showNotification('ID Tidak Valid', 'ID minimal 2 karakter.', 'warning');
     if (data.nama.length < 3) return showNotification('Nama Terlalu Pendek', 'Nama minimal 3 karakter.', 'warning');
     if (data.pin.length < 6) return showNotification('PIN Terlalu Pendek', 'PIN petugas baru minimal 6 digit.', 'warning');
@@ -464,7 +483,8 @@
 
   // Refresh Buttons
   document.getElementById('btn-refresh-officers')?.addEventListener('click', () => {
-    const pin = document.getElementById('officer-req-pin')?.value || '';
+    // HIGH-1 FIX: Use AppState._reqPin
+    const pin = AppState._reqPin || document.getElementById('officer-req-pin')?.value || '';
     sendCommand('LIST_OFFICERS', { 
       requester_id: AppState.currentAdmin?.id_pegawai, 
       requester_pin: pin 
@@ -484,26 +504,7 @@
     modal.showModal();
   }
 
-  function animateNumberFlip(el, newVal) {
-    if (el.textContent === String(newVal)) return;
-    anime({
-      targets: el,
-      translateY: [0, -10],
-      opacity: [1, 0],
-      duration: 200,
-      easing: 'easeInQuad',
-      complete: () => {
-        el.textContent = newVal;
-        anime({
-          targets: el,
-          translateY: [10, 0],
-          opacity: [0, 1],
-          duration: 300,
-          easing: 'easeOutBack'
-        });
-      }
-    });
-  }
+  // animateNumberFlip is now global in ws-client.js
 
   // AUTO-FOCUS & ENTER KEY
   window.addEventListener('DOMContentLoaded', () => {

@@ -1,56 +1,85 @@
-// ─── State Aplikasi Global ────────────────────────────────────────────────────
-const AppState = {
-  ws:                   null,
-  isConnected:          false,
-  currentUser:          null,   // { nik, nama, citizen_id, no_hp, alamat }
-  currentAdmin:         null,   // { id_pegawai, nama, role, jabatan }
-  _reqPin:              null,   // BUG-H1 FIX: store admin PIN in memory, not form
-  services:             [],
-  myBooking:            null,
-  queueData:            {},
-  reconnectAttempts:    0,
-  maxReconnectAttempts: 10,
-  pauseReconnect:       false,
+(function() {
+  'use strict';
 
-  // === WARGA ===
-  allBookings:          [],     // BUG-M6 FIX: initialized to [] to prevent undefined errors
-  selectedService:      null,
-  selectedSlot:         null,
-  monitorServiceId:     null,
-  unreadAnnouncements:  0,
+  // ─── State Aplikasi Global ────────────────────────────────────────────────────
+  const AppState = {
+    ws:                   null,
+    isConnected:          false,
+    currentUser:          null,   // { nik, nama, citizen_id, no_hp, alamat }
+    currentAdmin:         null,   // { id_pegawai, nama, role, jabatan }
+    _reqPin:              null,   // BUG-H1 FIX: store admin PIN in memory, not form
+    services:             [],
+    myBooking:            null,
+    queueData:            {},
+    reconnectAttempts:    0,
+    maxReconnectAttempts: 10,
+    pauseReconnect:       false,
 
-  // === ADMIN ===
-  queueSnapshots:       {},
-  statsSnapshot:        null,
-};
+    // === WARGA ===
+    allBookings:          [],     // BUG-M6 FIX: initialized to [] to prevent undefined errors
+    selectedService:      null,
+    selectedSlot:         null,
+    monitorServiceId:     null,
+    unreadAnnouncements:  0,
 
-// ─── Event Bus ────────────────────────────────────────────────────────────────
-const EventBus = {
-  listeners: {},
-  on(event, cb) {
-    if (!this.listeners[event]) this.listeners[event] = [];
-    this.listeners[event].push(cb);
-  },
-  emit(event, data) {
-    (this.listeners[event] || []).forEach(cb => {
-      try { cb(data); } catch (err) { console.error(`[EventBus] Error in "${event}":`, err); }
-    });
-  },
-};
+    // === ADMIN ===
+    queueSnapshots:       {},
+    statsSnapshot:        null,
+  };
 
-// ─── Kirim Command ke Gateway ─────────────────────────────────────────────────
-function sendCommand(cmd, payload = {}) {
-  if (!AppState.ws || AppState.ws.readyState !== WebSocket.OPEN) {
-    console.warn('[WsClient] Belum terhubung, command diabaikan:', cmd);
-    if(typeof showNotification === 'function') showNotification('Koneksi Terputus', 'Mencoba menghubungkan kembali...', 'warning');
-    return;
+  // Expose AppState to window
+  window.AppState = AppState;
+
+  // ─── Event Bus ────────────────────────────────────────────────────────────────
+  const EventBus = {
+    listeners: {},
+    on(event, cb) {
+      if (!this.listeners[event]) this.listeners[event] = [];
+      this.listeners[event].push(cb);
+    },
+    // HIGH-3 FIX: Add off() method
+    off(event, cb) {
+      if (!this.listeners[event]) return;
+      this.listeners[event] = this.listeners[event].filter(fn => fn !== cb);
+    },
+    emit(event, data) {
+      (this.listeners[event] || []).forEach(cb => {
+        try { cb(data); } catch (err) { console.error(`[EventBus] Error in "${event}":`, err); }
+      });
+    },
+  };
+
+  // Expose EventBus to window
+  window.EventBus = EventBus;
+
+  // SEC-FIX: Global XSS escape helper
+  window.esc = function(s) {
+    if (s === null || s === undefined) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;');
+  };
+
+  // ─── Kirim Command ke Gateway ─────────────────────────────────────────────────
+  function sendCommand(cmd, payload = {}) {
+    if (!AppState.ws || AppState.ws.readyState !== WebSocket.OPEN) {
+      console.warn('[WsClient] Belum terhubung, command diabaikan:', cmd);
+      if(typeof showNotification === 'function') showNotification('Koneksi Terputus', 'Mencoba menghubungkan kembali...', 'warning');
+      return;
+    }
+    // HIGH-4 FIX: Notify user if buffer is full
+    if (AppState.ws.bufferedAmount > 16 * 1024) {
+      console.warn('[WsClient] Buffer penuh, pesan ditunda:', cmd);
+      if(typeof showNotification === 'function') showNotification('Jaringan Sibuk', 'Coba lagi dalam beberapa detik.', 'warning');
+      return;
+    }
+    AppState.ws.send(JSON.stringify({ cmd, payload }));
   }
-  if (AppState.ws.bufferedAmount > 16 * 1024) {
-    console.warn('[WsClient] Buffer penuh, pesan ditunda:', cmd);
-    return;
-  }
-  AppState.ws.send(JSON.stringify({ cmd, payload }));
-}
+
+  window.sendCommand = sendCommand;
 
 // ─── Router Pesan dari Gateway ────────────────────────────────────────────────
 function routeMessage(msg) {
@@ -110,7 +139,11 @@ function routeMessage(msg) {
       break;
 
     // ── Responses Warga ──────────────────────────────────────────────────────
-    case 'LOGIN_RESULT':      EventBus.emit('loginResult', msg);      break;
+    case 'LOGIN_RESULT':
+      if (!msg.error) AppState.currentUser = msg.payload;
+      EventBus.emit('loginResult', msg);
+      break;
+
     case 'REGISTER_RESULT':   EventBus.emit('registerResult', msg);   break;
     case 'SERVICES_LIST':
       if (!msg.error) {
@@ -120,10 +153,22 @@ function routeMessage(msg) {
       break;
     case 'SLOTS_LIST':        EventBus.emit('slotsLoaded', msg);      break;
     case 'BOOKING_RESULT':    EventBus.emit('bookingResult', msg);    break;
-    case 'MY_BOOKING':        EventBus.emit('myBookingLoaded', msg);  break;
+
+    case 'MY_BOOKING':
+      EventBus.emit('myBookingLoaded', msg);
+      break;
+
     case 'CANCEL_RESULT':     EventBus.emit('cancelResult', msg);     break;
     case 'RESCHEDULE_RESULT': EventBus.emit('rescheduleResult', msg); break;
-    case 'QUEUE_STATUS':      EventBus.emit('queueStatus', msg);      break;
+
+    case 'QUEUE_STATUS':
+      // LOW-7 FIX: Update AppState.queueData
+      if (msg.payload && msg.payload.service_id) {
+        AppState.queueData[msg.payload.service_id] = msg.payload;
+      }
+      EventBus.emit('queueStatus', msg);
+      break;
+
     case 'ANNOUNCEMENTS':     EventBus.emit('announcements', msg);    break;
 
     // ── Responses Admin ──────────────────────────────────────────────────────
@@ -209,50 +254,79 @@ window.setLoading = function(btnId, loading) {
   }
 };
 
-// ─── Inisialisasi WebSocket ───────────────────────────────────────────────────
-function initWebSocket() {
-  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl      = `${wsProtocol}//${window.location.host}`;
+  // animateNumberFlip is now in queue-animation.js
 
-  updateConnectionStatus('connecting');
+  // ─── Inisialisasi WebSocket ───────────────────────────────────────────────────
+  function initWebSocket() {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl      = `${wsProtocol}//${window.location.host}`;
 
-  const ws = new WebSocket(wsUrl);
-  AppState.ws = ws;
+    updateConnectionStatus('connecting');
 
-  ws.addEventListener('open', () => {
-    AppState.isConnected       = true;
-    AppState.reconnectAttempts = 0;
-    updateConnectionStatus('connected');
-    // Note: wsConnected event is emitted when server sends CONNECTED message (routeMessage)
-    console.log('[WsClient] Koneksi dibuka.');
-  });
+    const ws = new WebSocket(wsUrl);
+    AppState.ws = ws;
 
-  ws.addEventListener('message', (event) => {
-    try {
-      routeMessage(JSON.parse(event.data));
-    } catch (err) {
-      console.error('[WsClient] Parse error:', err);
+    ws.addEventListener('open', () => {
+      AppState.isConnected       = true;
+      AppState.reconnectAttempts = 0;
+      updateConnectionStatus('connected');
+      console.log('[WsClient] Koneksi dibuka.');
+    });
+
+    ws.addEventListener('message', (event) => {
+      try {
+        routeMessage(JSON.parse(event.data));
+      } catch (err) {
+        console.error('[WsClient] Parse error:', err);
+      }
+    });
+
+    ws.addEventListener('close', (event) => {
+      AppState.isConnected = false;
+      AppState.ws          = null;
+      updateConnectionStatus('disconnected');
+      EventBus.emit('wsDisconnected', { code: event.code, reason: event.reason });
+      console.log(`[WsClient] Koneksi ditutup — code: ${event.code}, clean: ${event.wasClean}`);
+
+      if (event.code !== 1000 && event.code !== 1001) {
+        scheduleReconnect();
+      } else {
+        console.log('[WsClient] Penutupan normal, tidak reconnect.');
+      }
+    });
+
+    ws.addEventListener('error', () => {
+      updateConnectionStatus('disconnected');
+    });
+  }
+
+  // HIGH-5 FIX: Automatic re-authentication on reconnect
+  EventBus.on('wsConnected', () => {
+    // If admin was logged in, try to re-login
+    if (AppState.currentAdmin && AppState._reqPin) {
+      console.log('[WsClient] Re-authenticating Admin session...');
+      sendCommand('ADMIN_LOGIN', {
+        id_pegawai: AppState.currentAdmin.id_pegawai,
+        pin: AppState._reqPin
+      });
+    }
+    // If citizen was logged in, try to re-login
+    else if (AppState.currentUser && AppState.currentUser.nik) {
+      console.log('[WsClient] Re-authenticating Citizen session...');
+      sendCommand('LOGIN_CITIZEN', {
+        nik: AppState.currentUser.nik
+      });
     }
   });
 
-  ws.addEventListener('close', (event) => {
-    AppState.isConnected = false;
-    AppState.ws          = null;
-    updateConnectionStatus('disconnected');
-    EventBus.emit('wsDisconnected', { code: event.code, reason: event.reason });
-    console.log(`[WsClient] Koneksi ditutup — code: ${event.code}, clean: ${event.wasClean}`);
-
-    if (event.code !== 1000 && event.code !== 1001) {
-      scheduleReconnect();
-    } else {
-      console.log('[WsClient] Penutupan normal, tidak reconnect.');
-    }
+  // LOW-4 FIX: Reset loading buttons on disconnect
+  EventBus.on('wsDisconnected', () => {
+    document.querySelectorAll('button[disabled]').forEach(btn => {
+      if (btn.dataset.originalText) {
+        window.setLoading(btn, false);
+      }
+    });
   });
-
-  ws.addEventListener('error', () => {
-    updateConnectionStatus('disconnected');
-  });
-}
 
 // ─── Reconnect dengan Exponential Backoff ─────────────────────────────────────
 function scheduleReconnect() {
@@ -288,4 +362,6 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-document.addEventListener('DOMContentLoaded', initWebSocket);
+  document.addEventListener('DOMContentLoaded', initWebSocket);
+
+})();
