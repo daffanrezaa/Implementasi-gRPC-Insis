@@ -98,10 +98,10 @@ function CreateBooking(call, callback) {
 
 function CancelBooking(call, callback) {
   try {
-    const { booking_id, citizen_id } = call.request;
+    const { booking_code, citizen_id } = call.request;
 
-    const booking = bookingStore.get(booking_id);
-    if (!booking)                          return callback(errors.notFound('Booking tidak ditemukan.'));
+    const booking = bookingStore.getByCode(booking_code.trim().toUpperCase());
+    if (!booking)                          return callback(errors.notFound(`Booking dengan kode '${booking_code}' tidak ditemukan.`));
     if (booking.citizen_id !== citizen_id) return callback(errors.permissionDenied());
     if (booking.status === 'CANCELLED' || booking.status === 'EXPIRED') {
       return callback(errors.bookingCancelled());
@@ -170,10 +170,10 @@ function GetMyBooking(call, callback) {
 
 function RescheduleBooking(call, callback) {
   try {
-    const { booking_id, citizen_id, new_slot_id } = call.request;
+    const { booking_code, citizen_id, new_slot_id } = call.request;
 
-    const booking = bookingStore.get(booking_id);
-    if (!booking)                          return callback(errors.notFound('Booking tidak ditemukan.'));
+    const booking = bookingStore.getByCode(booking_code.trim().toUpperCase());
+    if (!booking)                          return callback(errors.notFound(`Booking dengan kode '${booking_code}' tidak ditemukan.`));
     if (booking.citizen_id !== citizen_id) return callback(errors.permissionDenied());
     if (booking.status !== 'BOOKED')       return callback(errors.bookingNotPending());
 

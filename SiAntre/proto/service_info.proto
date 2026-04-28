@@ -25,9 +25,10 @@ message RegisterCitizenRequest {
 }
 
 message RegisterCitizenResponse {
-  bool   success = 1;
-  string nik     = 2;
-  string message = 3;
+  bool   success    = 1;
+  string nik        = 2;
+  string message    = 3;
+  string citizen_id = 4;  // System-generated unique ID (e.g. "CIT-0001")
 }
 
 message LoginCitizenRequest {
@@ -41,6 +42,7 @@ message LoginCitizenResponse {
   string no_hp        = 4;
   string alamat       = 5;
   string message      = 6;
+  string citizen_id   = 7;  // System-generated unique ID
 }
 
 // ── Service info messages ───────────────────────────────────────
@@ -86,8 +88,10 @@ message GetAvailableSlotsResponse {
 message GetAnnouncementsRequest {}
 
 message Announcement {
-  string message   = 1;
-  string timestamp = 2;
+  string id         = 1;  // Unique ID for deduplication
+  string message    = 2;
+  string service_id = 3;  // Nullable — null means system-wide
+  string timestamp  = 4;
 }
 
 message GetAnnouncementsResponse {

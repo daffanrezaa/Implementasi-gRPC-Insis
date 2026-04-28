@@ -13,6 +13,13 @@ function hashPin(pin) {
 // Map<id_pegawai, OfficerProfile>
 const officers = new Map();
 
+let officerCounter = 0;
+
+function generateOfficerId() {
+  officerCounter++;
+  return `OFC-${String(officerCounter).padStart(4, '0')}`;
+}
+
 module.exports = {
   get:    (id) => officers.get(id),
   has:    (id) => officers.has(id),
@@ -20,14 +27,17 @@ module.exports = {
   hashPin,
 
   register(data) {
+    const officer_id = generateOfficerId();
     officers.set(data.id_pegawai, {
       id_pegawai:    data.id_pegawai,
+      officer_id,
       nama:          data.nama,
       jabatan:       data.jabatan,
       role:          data.role,
       pin_hash:      hashPin(data.pin),
       registered_at: new Date().toISOString(),
     });
+    return officer_id;
   },
 
   verifyPin(id_pegawai, pin) {

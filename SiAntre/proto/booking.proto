@@ -29,9 +29,9 @@ message CreateBookingResponse {
 // ── CancelBooking ───────────────────────────────────────────────
 
 message CancelBookingRequest {
-  string booking_id = 1;
-  string citizen_id = 2;
-  string reason     = 3;
+  string booking_code = 1;  // User-facing code (e.g. "PKB-A3F7")
+  string citizen_id   = 2;
+  string reason       = 3;
 }
 
 message CancelBookingResponse {
@@ -64,9 +64,9 @@ message BookingDetail {
 // ── RescheduleBooking ───────────────────────────────────────────
 
 message RescheduleBookingRequest {
-  string booking_id  = 1;
-  string citizen_id  = 2;
-  string new_slot_id = 3;
+  string booking_code = 1;  // User-facing code (e.g. "PKB-A3F7")
+  string citizen_id   = 2;
+  string new_slot_id  = 3;
 }
 
 message RescheduleBookingResponse {

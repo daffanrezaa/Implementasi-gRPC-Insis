@@ -24,19 +24,22 @@ function RegisterCitizen(call, callback) {
       return callback(errors.invalidArgument('NIK sudah terdaftar. Silakan gunakan menu Masuk.'));
     }
 
+    const citizen_id = citizenStore.generateCitizenId();
     citizenStore.set(nik, {
       nik,
+      citizen_id,
       nama_lengkap: nama_lengkap.trim(),
       no_hp:        (no_hp || '').trim(),
       alamat:       (alamat || '').trim(),
       registered_at: new Date().toISOString(),
     });
 
-    console.log(`[RPC] RegisterCitizen — NIK ${nik}, ${nama_lengkap.trim()}`);
+    console.log(`[RPC] RegisterCitizen — NIK ${nik}, ${nama_lengkap.trim()} → ${citizen_id}`);
     callback(null, {
       success: true,
       nik,
       message: `Pendaftaran berhasil! Selamat datang, ${nama_lengkap.trim()}.`,
+      citizen_id,
     });
   } catch (err) {
     console.error('[RPC] RegisterCitizen ERROR:', err.message);
@@ -67,6 +70,7 @@ function LoginCitizen(call, callback) {
       no_hp:        citizen.no_hp,
       alamat:       citizen.alamat,
       message:      `Selamat datang kembali, ${citizen.nama_lengkap}!`,
+      citizen_id:   citizen.citizen_id,
     });
   } catch (err) {
     console.error('[RPC] LoginCitizen ERROR:', err.message);

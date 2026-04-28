@@ -67,7 +67,7 @@ function RegisterOfficer(call, callback) {
       return callback(errors.invalidArgument('Role harus PETUGAS atau ADMIN.'));
     }
 
-    officerStore.register({
+    const officer_id = officerStore.register({
       id_pegawai: idUp,
       nama:       nama.trim(),
       jabatan:    (role || '').toUpperCase() === 'ADMIN' ? 'Administrator' : 'Petugas Loket',
@@ -76,11 +76,12 @@ function RegisterOfficer(call, callback) {
     });
 
     const label = isFirstSetup ? 'Setup Awal' : `oleh ${requester_id}`;
-    console.log(`[RPC] RegisterOfficer — ${idUp} (${role}) [${label}]`);
+    console.log(`[RPC] RegisterOfficer — ${idUp} (${role}) [${label}] → ${officer_id}`);
     callback(null, {
       success:    true,
       id_pegawai: idUp,
       message:    `Akun '${idUp}' (${nama.trim()}) berhasil didaftarkan.`,
+      officer_id,
     });
   } catch (err) {
     console.error('[RPC] RegisterOfficer ERROR:', err.message);
@@ -219,6 +220,7 @@ function LoginOfficer(call, callback) {
       jabatan:    officer.jabatan,
       role:       officer.role,
       message:    `Selamat datang, ${officer.nama} — ${officer.jabatan}.`,
+      officer_id: officer.officer_id,
     });
   } catch (err) {
     console.error('[RPC] LoginOfficer ERROR:', err.message);
@@ -339,7 +341,7 @@ function AdminSession(call) {
               service_id,
               message,
             });
-            announcementStore.add(`(Layanan ${service_id}) ${message}`);
+            announcementStore.add(message, service_id);
           } else {
             sentCount = broadcastAll({ event_type: 'ANNOUNCEMENT', message });
             announcementStore.add(message);

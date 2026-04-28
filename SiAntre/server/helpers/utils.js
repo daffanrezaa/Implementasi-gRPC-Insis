@@ -60,7 +60,7 @@ function generateTimeSlots(openHour, closeHour) {
 // Check if NIP belongs to a registered officer
 function isOfficer(nip) {
   const { officerStore } = require('../state');
-  return officerStore.isRegistered(nip);
+  return officerStore.isRegistered((nip || '').toUpperCase());
 }
 
 // Check if a booking is within the check-in window (max 15 min before session)

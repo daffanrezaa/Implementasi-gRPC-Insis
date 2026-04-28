@@ -133,7 +133,8 @@ function seed() {
     { nik: '3201234567890003', nama_lengkap: 'Ahmad Fauzi',    no_hp: '083456789012', alamat: 'Jl. Diponegoro No. 5, Surabaya' },
   ];
   for (const c of CITIZENS) {
-    citizenStore.set(c.nik, { ...c, registered_at: new Date().toISOString() });
+    const citizen_id = citizenStore.generateCitizenId();
+    citizenStore.set(c.nik, { ...c, citizen_id, registered_at: new Date().toISOString() });
   }
 
   const slotCount = generateTimeSlots('08:00', '14:00').length * 2; // today + tomorrow

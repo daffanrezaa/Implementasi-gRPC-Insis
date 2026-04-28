@@ -46,6 +46,7 @@ message RegisterOfficerResponse {
   bool   success    = 1;
   string id_pegawai = 2;
   string message    = 3;
+  string officer_id = 4;  // System-generated unique ID (e.g. "OFC-0001")
 }
 
 // ── ListOfficers ────────────────────────────────────────────────
@@ -110,6 +111,7 @@ message LoginOfficerResponse {
   string jabatan    = 4;
   string role       = 5;
   string message    = 6;
+  string officer_id = 7;  // System-generated unique ID
 }
 
 // ── AdminSession (BiDi) ─────────────────────────────────────────
